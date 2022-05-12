@@ -7,6 +7,14 @@ A small and fast ECDH and ECDSA implementation for 8-bit, 32-bit, and 64-bit pro
 The static version of micro-ecc (ie, where the curve was selected at compile-time) can be found in the "static" branch.
 micro-ecc的静态版本（例如编译时确定曲线），可以签出"static"分支。
 
+
+修改需求
+--------
+01、仅支持X86平台
+02、仅支持64bit处理器
+03、仅支持secp256k1曲线和95bit密钥实现的cd-key
+04、独立大数计算库（仅实现ECC需要）
+
 Features
 特点
 --------

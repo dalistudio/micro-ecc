@@ -9,6 +9,7 @@
 /* Windows */
 
 // use pragma syntax to prevent tweaking the linker script for getting CryptXYZ function
+// 使用pragma语法可防止为获取CryptXYZ函数而调整链接器脚本
 #pragma comment(lib, "crypt32.lib")
 #pragma comment(lib, "advapi32.lib")
 

@@ -1,5 +1,8 @@
 /* Copyright 2015, Kenneth MacKay. Licensed under the BSD 2-clause license. */
 
+/* VLI - Virtual Large Integer 虚拟大整数 */
+/* VBI - Virtual Big Integer 虚拟大整数 */
+
 #ifndef _UECC_VLI_H_
 #define _UECC_VLI_H_
 
@@ -7,7 +10,9 @@
 #include "types.h"
 
 /* Functions for raw large-integer manipulation. These are only available
-   if uECC.c is compiled with uECC_ENABLE_VLI_API defined to 1. */
+   if uECC.c is compiled with uECC_ENABLE_VLI_API defined to 1. 
+   用于原始大整数操作的函数。这些仅在uECC.c的情况下可用，是用定义为1的uECC_ENABLE_VLI_API编译的。
+*/
 #ifndef uECC_ENABLE_VLI_API
     #define uECC_ENABLE_VLI_API 0
 #endif
@@ -21,26 +26,26 @@ extern "C"
 
 void uECC_vli_clear(uECC_word_t *vli, wordcount_t num_words);
 
-/* Constant-time comparison to zero - secure way to compare long integers */
-/* Returns 1 if vli == 0, 0 otherwise. */
+/* Constant-time comparison to zero - secure way to compare long integers 恒定时间比较到零-比较长整数的安全方法 */
+/* Returns 1 if vli == 0, 0 otherwise. 如果vli==0，则返回1，否则返回0。*/
 uECC_word_t uECC_vli_isZero(const uECC_word_t *vli, wordcount_t num_words);
 
-/* Returns nonzero if bit 'bit' of vli is set. */
+/* Returns nonzero if bit 'bit' of vli is set. 如果设置了vli的位“bit”，则返回非零。*/
 uECC_word_t uECC_vli_testBit(const uECC_word_t *vli, bitcount_t bit);
 
-/* Counts the number of bits required to represent vli. */
+/* Counts the number of bits required to represent vli. 统计表示vli所需的位数。*/
 bitcount_t uECC_vli_numBits(const uECC_word_t *vli, const wordcount_t max_words);
 
 /* Sets dest = src. */
 void uECC_vli_set(uECC_word_t *dest, const uECC_word_t *src, wordcount_t num_words);
 
-/* Constant-time comparison function - secure way to compare long integers */
+/* Constant-time comparison function - secure way to compare long integers 恒定时间比较函数-比较长整数的安全方法*/
 /* Returns one if left == right, zero otherwise */
 uECC_word_t uECC_vli_equal(const uECC_word_t *left,
                            const uECC_word_t *right,
                            wordcount_t num_words);
 
-/* Constant-time comparison function - secure way to compare long integers */
+/* Constant-time comparison function - secure way to compare long integers 恒定时间比较函数-比较长整数的安全方法*/
 /* Returns sign of left - right, in constant time. */
 cmpresult_t uECC_vli_cmp(const uECC_word_t *left, const uECC_word_t *right, wordcount_t num_words);
 
