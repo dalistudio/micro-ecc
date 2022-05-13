@@ -16,7 +16,7 @@ Possible values for uECC_PLATFORM are defined below:
 #define uECC_arm        3 /* ARM 32位 */
 #define uECC_arm_thumb  4 /* ARM Thumb */
 #define uECC_arm_thumb2 5 /* ARM Thumb2 */
-#define uECC_arm64      6 /* ARM 32位 */
+#define uECC_arm64      6 /* ARM 64位 */
 #define uECC_avr        7 /* AVR 8位 */
 
 /* If desired, you can define uECC_WORD_SIZE as appropriate for your platform (1, 4, or 8 bytes).

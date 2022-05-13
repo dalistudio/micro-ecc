@@ -219,6 +219,7 @@ uECC_VLI_API void uECC_vli_clear(uECC_word_t *vli, wordcount_t num_words) {
 
 /* Constant-time comparison to zero - secure way to compare long integers */
 /* Returns 1 if vli == 0, 0 otherwise. */
+/* 是否为零 */
 uECC_VLI_API uECC_word_t uECC_vli_isZero(const uECC_word_t *vli, wordcount_t num_words) {
     uECC_word_t bits = 0;
     wordcount_t i;
@@ -228,6 +229,7 @@ uECC_VLI_API uECC_word_t uECC_vli_isZero(const uECC_word_t *vli, wordcount_t num
     return (bits == 0);
 }
 
+/* 测试比特位 */
 /* Returns nonzero if bit 'bit' of vli is set. */
 uECC_VLI_API uECC_word_t uECC_vli_testBit(const uECC_word_t *vli, bitcount_t bit) {
     return (vli[bit >> uECC_WORD_BITS_SHIFT] & ((uECC_word_t)1 << (bit & uECC_WORD_BITS_MASK)));
@@ -263,6 +265,7 @@ uECC_VLI_API bitcount_t uECC_vli_numBits(const uECC_word_t *vli, const wordcount
 }
 
 /* Sets dest = src. */
+/* 大整数赋值 */
 #if !asm_set
 uECC_VLI_API void uECC_vli_set(uECC_word_t *dest, const uECC_word_t *src, wordcount_t num_words) {
     wordcount_t i;
@@ -273,6 +276,7 @@ uECC_VLI_API void uECC_vli_set(uECC_word_t *dest, const uECC_word_t *src, wordco
 #endif /* !asm_set */
 
 /* Returns sign of left - right. */
+/* 不安全比较 */
 static cmpresult_t uECC_vli_cmp_unsafe(const uECC_word_t *left,
                                        const uECC_word_t *right,
                                        wordcount_t num_words) {
@@ -289,6 +293,7 @@ static cmpresult_t uECC_vli_cmp_unsafe(const uECC_word_t *left,
 
 /* Constant-time comparison function - secure way to compare long integers */
 /* Returns one if left == right, zero otherwise. */
+/* 等于 */
 uECC_VLI_API uECC_word_t uECC_vli_equal(const uECC_word_t *left,
                                         const uECC_word_t *right,
                                         wordcount_t num_words) {
@@ -306,6 +311,7 @@ uECC_VLI_API uECC_word_t uECC_vli_sub(uECC_word_t *result,
                                       wordcount_t num_words);
 
 /* Returns sign of left - right, in constant time. */
+/* 比较 */
 uECC_VLI_API cmpresult_t uECC_vli_cmp(const uECC_word_t *left,
                                       const uECC_word_t *right,
                                       wordcount_t num_words) {
@@ -316,6 +322,7 @@ uECC_VLI_API cmpresult_t uECC_vli_cmp(const uECC_word_t *left,
 }
 
 /* Computes vli = vli >> 1. */
+/* 右移1位 */
 #if !asm_rshift1
 uECC_VLI_API void uECC_vli_rshift1(uECC_word_t *vli, wordcount_t num_words) {
     uECC_word_t *end = vli;
@@ -331,12 +338,13 @@ uECC_VLI_API void uECC_vli_rshift1(uECC_word_t *vli, wordcount_t num_words) {
 #endif /* !asm_rshift1 */
 
 /* Computes result = left + right, returning carry. Can modify in place. */
+/* 加法 */
 #if !asm_add
 uECC_VLI_API uECC_word_t uECC_vli_add(uECC_word_t *result,
                                       const uECC_word_t *left,
                                       const uECC_word_t *right,
                                       wordcount_t num_words) {
-    uECC_word_t carry = 0;
+    uECC_word_t carry = 0; /* 进位 */
     wordcount_t i;
     for (i = 0; i < num_words; ++i) {
         uECC_word_t sum = left[i] + right[i] + carry;
@@ -350,12 +358,13 @@ uECC_VLI_API uECC_word_t uECC_vli_add(uECC_word_t *result,
 #endif /* !asm_add */
 
 /* Computes result = left - right, returning borrow. Can modify in place. */
+/* 减法 */
 #if !asm_sub
 uECC_VLI_API uECC_word_t uECC_vli_sub(uECC_word_t *result,
                                       const uECC_word_t *left,
                                       const uECC_word_t *right,
                                       wordcount_t num_words) {
-    uECC_word_t borrow = 0;
+    uECC_word_t borrow = 0; /* 借位 */
     wordcount_t i;
     for (i = 0; i < num_words; ++i) {
         uECC_word_t diff = left[i] - right[i] - borrow;
@@ -368,6 +377,7 @@ uECC_VLI_API uECC_word_t uECC_vli_sub(uECC_word_t *result,
 }
 #endif /* !asm_sub */
 
+/* 乘加 */
 #if !asm_mult || (uECC_SQUARE_FUNC && !asm_square) || \
     (uECC_SUPPORTS_secp256k1 && (uECC_OPTIMIZATION_LEVEL > 0) && \
         ((uECC_WORD_SIZE == 1) || (uECC_WORD_SIZE == 8)))
@@ -412,6 +422,7 @@ static void muladd(uECC_word_t a,
 }
 #endif /* muladd needed */
 
+/* 乘法 */
 #if !asm_mult
 uECC_VLI_API void uECC_vli_mult(uECC_word_t *result,
                                 const uECC_word_t *left,
@@ -447,6 +458,7 @@ uECC_VLI_API void uECC_vli_mult(uECC_word_t *result,
 
 #if uECC_SQUARE_FUNC
 
+/* 乘加 */
 #if !asm_square
 static void mul2add(uECC_word_t a,
                     uECC_word_t b,
@@ -495,6 +507,7 @@ static void mul2add(uECC_word_t a,
 #endif
 }
 
+/* 平方 */
 uECC_VLI_API void uECC_vli_square(uECC_word_t *result,
                                   const uECC_word_t *left,
                                   wordcount_t num_words) {
@@ -537,6 +550,7 @@ uECC_VLI_API void uECC_vli_square(uECC_word_t *result,
 
 /* Computes result = (left + right) % mod.
    Assumes that left < mod and right < mod, and that result does not overlap mod. */
+/* 相加求模 */
 uECC_VLI_API void uECC_vli_modAdd(uECC_word_t *result,
                                   const uECC_word_t *left,
                                   const uECC_word_t *right,
@@ -551,6 +565,7 @@ uECC_VLI_API void uECC_vli_modAdd(uECC_word_t *result,
 
 /* Computes result = (left - right) % mod.
    Assumes that left < mod and right < mod, and that result does not overlap mod. */
+/* 相减求模 */
 uECC_VLI_API void uECC_vli_modSub(uECC_word_t *result,
                                   const uECC_word_t *left,
                                   const uECC_word_t *right,
@@ -566,6 +581,7 @@ uECC_VLI_API void uECC_vli_modSub(uECC_word_t *result,
 
 /* Computes result = product % mod, where product is 2N words long. */
 /* Currently only designed to work for curve_p or curve_n. */
+/* 求模 */
 uECC_VLI_API void uECC_vli_mmod(uECC_word_t *result,
                                 uECC_word_t *product,
                                 const uECC_word_t *mod,
@@ -609,6 +625,7 @@ uECC_VLI_API void uECC_vli_mmod(uECC_word_t *result,
 }
 
 /* Computes result = (left * right) % mod. */
+/* 相乘求模 */
 uECC_VLI_API void uECC_vli_modMult(uECC_word_t *result,
                                    const uECC_word_t *left,
                                    const uECC_word_t *right,
@@ -619,6 +636,7 @@ uECC_VLI_API void uECC_vli_modMult(uECC_word_t *result,
     uECC_vli_mmod(result, product, mod, num_words);
 }
 
+/* 曲线相乘求模 */
 uECC_VLI_API void uECC_vli_modMult_fast(uECC_word_t *result,
                                         const uECC_word_t *left,
                                         const uECC_word_t *right,
@@ -636,6 +654,7 @@ uECC_VLI_API void uECC_vli_modMult_fast(uECC_word_t *result,
 
 #if uECC_ENABLE_VLI_API
 /* Computes result = left^2 % mod. */
+/* 平方求模 */
 uECC_VLI_API void uECC_vli_modSquare(uECC_word_t *result,
                                      const uECC_word_t *left,
                                      const uECC_word_t *mod,
@@ -646,6 +665,7 @@ uECC_VLI_API void uECC_vli_modSquare(uECC_word_t *result,
 }
 #endif /* uECC_ENABLE_VLI_API */
 
+/* 曲线平方求模 */
 uECC_VLI_API void uECC_vli_modSquare_fast(uECC_word_t *result,
                                           const uECC_word_t *left,
                                           uECC_Curve curve) {
@@ -660,6 +680,7 @@ uECC_VLI_API void uECC_vli_modSquare_fast(uECC_word_t *result,
 
 #else /* uECC_SQUARE_FUNC */
 
+/* 平方求模 */
 #if uECC_ENABLE_VLI_API
 uECC_VLI_API void uECC_vli_modSquare(uECC_word_t *result,
                                      const uECC_word_t *left,
@@ -669,6 +690,7 @@ uECC_VLI_API void uECC_vli_modSquare(uECC_word_t *result,
 }
 #endif /* uECC_ENABLE_VLI_API */
 
+/* 曲线平方求模 */
 uECC_VLI_API void uECC_vli_modSquare_fast(uECC_word_t *result,
                                           const uECC_word_t *left,
                                           uECC_Curve curve) {
@@ -677,6 +699,7 @@ uECC_VLI_API void uECC_vli_modSquare_fast(uECC_word_t *result,
 
 #endif /* uECC_SQUARE_FUNC */
 
+/* 取反求模 更新 */
 #define EVEN(vli) (!(vli[0] & 1))
 static void vli_modInv_update(uECC_word_t *uv,
                               const uECC_word_t *mod,
@@ -693,6 +716,7 @@ static void vli_modInv_update(uECC_word_t *uv,
 
 /* Computes result = (1 / input) % mod. All VLIs are the same size.
    See "From Euclid's GCD to Montgomery Multiplication to the Great Divide" */
+/* 取反求模 */
 uECC_VLI_API void uECC_vli_modInv(uECC_word_t *result,
                                   const uECC_word_t *input,
                                   const uECC_word_t *mod,
@@ -739,6 +763,7 @@ uECC_VLI_API void uECC_vli_modInv(uECC_word_t *result,
 }
 
 /* ------ Point operations ------ */
+/* ------ 点操作 ------*/
 
 #include "curve-specific.inc"
 
@@ -746,6 +771,7 @@ uECC_VLI_API void uECC_vli_modInv(uECC_word_t *result,
 #define EccPoint_isZero(point, curve) uECC_vli_isZero((point), (curve)->num_words * 2)
 
 /* Point multiplication algorithm using Montgomery's ladder with co-Z coordinates.
+   点乘算法使用 co-Z坐标的蒙哥马利阶梯
 From http://eprint.iacr.org/2011/338.pdf
 */
 
@@ -1015,6 +1041,7 @@ uECC_VLI_API void uECC_vli_bytesToNative(uECC_word_t *native,
 
 #endif /* uECC_WORD_SIZE */
 
+/* 生成公钥和私钥 */
 int uECC_make_key(uint8_t *public_key,
                   uint8_t *private_key,
                   uECC_Curve curve) {
@@ -1045,6 +1072,7 @@ int uECC_make_key(uint8_t *public_key,
     return 0;
 }
 
+/* 共享密钥 */
 int uECC_shared_secret(const uint8_t *public_key,
                        const uint8_t *private_key,
                        uint8_t *secret,
@@ -1090,6 +1118,7 @@ int uECC_shared_secret(const uint8_t *public_key,
     return !EccPoint_isZero(_public, curve);
 }
 
+/* 压缩 */
 #if uECC_SUPPORT_COMPRESSED_POINT
 void uECC_compress(const uint8_t *public_key, uint8_t *compressed, uECC_Curve curve) {
     wordcount_t i;
@@ -1103,6 +1132,7 @@ void uECC_compress(const uint8_t *public_key, uint8_t *compressed, uECC_Curve cu
 #endif
 }
 
+/* 解压 */
 void uECC_decompress(const uint8_t *compressed, uint8_t *public_key, uECC_Curve curve) {
 #if uECC_VLI_NATIVE_LITTLE_ENDIAN
     uECC_word_t *point = (uECC_word_t *)public_key;
@@ -1129,6 +1159,7 @@ void uECC_decompress(const uint8_t *compressed, uint8_t *public_key, uECC_Curve 
 }
 #endif /* uECC_SUPPORT_COMPRESSED_POINT */
 
+/* 有效的点 */
 uECC_VLI_API int uECC_valid_point(const uECC_word_t *point, uECC_Curve curve) {
     uECC_word_t tmp1[uECC_MAX_WORDS];
     uECC_word_t tmp2[uECC_MAX_WORDS];
@@ -1152,6 +1183,7 @@ uECC_VLI_API int uECC_valid_point(const uECC_word_t *point, uECC_Curve curve) {
     return (int)(uECC_vli_equal(tmp1, tmp2, num_words));
 }
 
+/* 有效的公钥 */
 int uECC_valid_public_key(const uint8_t *public_key, uECC_Curve curve) {
 #if uECC_VLI_NATIVE_LITTLE_ENDIAN
     uECC_word_t *_public = (uECC_word_t *)public_key;
@@ -1167,6 +1199,7 @@ int uECC_valid_public_key(const uint8_t *public_key, uECC_Curve curve) {
     return uECC_valid_point(_public, curve);
 }
 
+/* 计算公钥 */
 int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, uECC_Curve curve) {
 #if uECC_VLI_NATIVE_LITTLE_ENDIAN
     uECC_word_t *_private = (uECC_word_t *)private_key;
@@ -1205,6 +1238,7 @@ int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, uEC
 
 /* -------- ECDSA code -------- */
 
+/* 比特转整数 */
 static void bits2int(uECC_word_t *native,
                      const uint8_t *bits,
                      unsigned bits_size,
@@ -1243,6 +1277,7 @@ static void bits2int(uECC_word_t *native,
     }
 }
 
+/* 用内部k签名 */
 static int uECC_sign_with_k_internal(const uint8_t *private_key,
                             const uint8_t *message_hash,
                             unsigned hash_size,
@@ -1327,6 +1362,7 @@ static int uECC_sign_with_k_internal(const uint8_t *private_key,
 }
 
 /* For testing - sign with an explicitly specified k value */
+/* 用k签名 */
 int uECC_sign_with_k(const uint8_t *private_key,
                             const uint8_t *message_hash,
                             unsigned hash_size,
@@ -1338,6 +1374,7 @@ int uECC_sign_with_k(const uint8_t *private_key,
     return uECC_sign_with_k_internal(private_key, message_hash, hash_size, k2, signature, curve);
 }
 
+/* 签名 */
 int uECC_sign(const uint8_t *private_key,
               const uint8_t *message_hash,
               unsigned hash_size,
@@ -1360,6 +1397,7 @@ int uECC_sign(const uint8_t *private_key,
 
 /* Compute an HMAC using K as a key (as in RFC 6979). Note that K is always
    the same size as the hash result size. */
+/* HMAC散列算法 */
 static void HMAC_init(const uECC_HashContext *hash_context, const uint8_t *K) {
     uint8_t *pad = hash_context->tmp + 2 * hash_context->result_size;
     unsigned i;
@@ -1409,6 +1447,7 @@ static void update_V(const uECC_HashContext *hash_context, uint8_t *K, uint8_t *
     * We generate a value for k (aka T) directly rather than converting endianness.
 
    Layout of hash_context->tmp: <K> | <V> | (1 byte overlapped 0x00 or 0x01) / <HMAC pad> */
+/* 确定性签名 */
 int uECC_sign_deterministic(const uint8_t *private_key,
                             const uint8_t *message_hash,
                             unsigned hash_size,
@@ -1486,6 +1525,7 @@ static bitcount_t smax(bitcount_t a, bitcount_t b) {
     return (a > b ? a : b);
 }
 
+/* 验证 */
 int uECC_verify(const uint8_t *public_key,
                 const uint8_t *message_hash,
                 unsigned hash_size,
@@ -1640,12 +1680,14 @@ const uECC_word_t *uECC_curve_b(uECC_Curve curve) {
     return curve->b;
 }
 
+/* 开放求模 */
 #if uECC_SUPPORT_COMPRESSED_POINT
 void uECC_vli_mod_sqrt(uECC_word_t *a, uECC_Curve curve) {
     curve->mod_sqrt(a, curve);
 }
 #endif
 
+/* 曲线求模 */
 void uECC_vli_mmod_fast(uECC_word_t *result, uECC_word_t *product, uECC_Curve curve) {
 #if (uECC_OPTIMIZATION_LEVEL > 0)
     curve->mmod_fast(result, product);
@@ -1654,6 +1696,7 @@ void uECC_vli_mmod_fast(uECC_word_t *result, uECC_word_t *product, uECC_Curve cu
 #endif
 }
 
+/* 点乘 */
 void uECC_point_mult(uECC_word_t *result,
                      const uECC_word_t *point,
                      const uECC_word_t *scalar,
