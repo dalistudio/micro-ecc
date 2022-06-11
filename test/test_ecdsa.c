@@ -12,20 +12,9 @@ int main() {
     uint8_t hash[32] = {0};
     uint8_t sig[64] = {0};
 
-    const struct uECC_Curve_t * curves[5];
+    const struct Curve_t * curves[5];
     int num_curves = 0;
-#if uECC_SUPPORTS_secp160r1
-    curves[num_curves++] = uECC_secp160r1();
-#endif
-#if uECC_SUPPORTS_secp192r1
-    curves[num_curves++] = uECC_secp192r1();
-#endif
-#if uECC_SUPPORTS_secp224r1
-    curves[num_curves++] = uECC_secp224r1();
-#endif
-#if uECC_SUPPORTS_secp256r1
-    curves[num_curves++] = uECC_secp256r1();
-#endif
+    
 #if uECC_SUPPORTS_secp256k1
     curves[num_curves++] = uECC_secp256k1();
 #endif

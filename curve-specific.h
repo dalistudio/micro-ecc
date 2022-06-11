@@ -11,12 +11,12 @@
 #define BYTES_TO_WORDS_4(a, b, c, d) 0x##d##c##b##a
 
 
-static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, uECC_Curve curve);
-static void x_side_secp256k1(big *result, const big *x, uECC_Curve curve);
+static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, Curve curve);
+static void x_side_secp256k1(big *result, const big *x, Curve curve);
 static void vbi_mmod_fast_secp256k1(big *result, big *product);
 
 
-static const struct uECC_Curve_t curve_secp256k1 = {
+static const struct Curve_t curve_secp256k1 = {
     secp256k1_words,
     secp256k1_bytes,
     256, /* num_n_bits */
@@ -47,11 +47,11 @@ static const struct uECC_Curve_t curve_secp256k1 = {
 
 };
 
-uECC_Curve uECC_secp256k1(void) { return &curve_secp256k1; }
+Curve uECC_secp256k1(void) { return &curve_secp256k1; }
 
 
 /* Double in place */
-static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, uECC_Curve curve) {
+static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, Curve curve) {
     /* t1 = X, t2 = Y, t3 = Z */
     big t4[secp256k1_words];
     big t5[secp256k1_words];
@@ -87,7 +87,7 @@ static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, uECC_Curve c
 }
 
 /* Computes result = x^3 + b. result must not overlap x. */
-static void x_side_secp256k1(big *result, const big *x, uECC_Curve curve) {
+static void x_side_secp256k1(big *result, const big *x, Curve curve) {
     vbi_mod_square_fast(result, x, curve);                                /* r = x^2 */
     vbi_mod_mul_fast(result, result, x, curve);                          /* r = x^3 */
     vbi_mod_add(result, result, curve->b, curve->p, secp256k1_words); /* r = x^3 + b */

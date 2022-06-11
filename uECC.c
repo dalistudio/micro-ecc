@@ -13,7 +13,7 @@
 #define BITS_TO_WORDS(num_bits) ((num_bits + ((WORD_SIZE * 8) - 1)) / (WORD_SIZE * 8))
 #define BITS_TO_BYTES(num_bits) ((num_bits + 7) / 8)
 
-struct uECC_Curve_t {
+struct Curve_t {
     count num_words;
     count num_bytes;
     bits num_n_bits;
@@ -21,8 +21,8 @@ struct uECC_Curve_t {
     big n[MAX_WORDS];
     big G[MAX_WORDS * 2];
     big b[MAX_WORDS];
-    void (*double_jacobian)(big * X1, big * Y1, big * Z1, uECC_Curve curve);
-    void (*x_side)(big *result, const big *x, uECC_Curve curve);
+    void (*double_jacobian)(big * X1, big * Y1, big * Z1, Curve curve);
+    void (*x_side)(big *result, const big *x, Curve curve);
     void (*mmod_fast)(big *result, big *product);
 };
 
@@ -36,11 +36,11 @@ RNG_Function uECC_get_rng(void) {
     return g_rng_function;
 }
 
-int uECC_curve_private_key_size(uECC_Curve curve) {
+int uECC_curve_private_key_size(Curve curve) {
     return BITS_TO_BYTES(curve->num_n_bits);
 }
 
-int uECC_curve_public_key_size(uECC_Curve curve) {
+int uECC_curve_public_key_size(Curve curve) {
     return 2 * curve->num_bytes;
 }
 
@@ -315,7 +315,7 @@ vbi_API void vbi_mod_mul(big *result, const big *left, const big *right, const b
 }
 
 /* 曲线相乘求模 */
-vbi_API void vbi_mod_mul_fast(big *result, const big *left, const big *right, uECC_Curve curve) {
+vbi_API void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, curve->num_words);
 
@@ -324,7 +324,7 @@ vbi_API void vbi_mod_mul_fast(big *result, const big *left, const big *right, uE
 }
 
 /* 曲线平方求模 */
-vbi_API void vbi_mod_square_fast(big *result, const big *left, uECC_Curve curve) {
+vbi_API void vbi_mod_square_fast(big *result, const big *left, Curve curve) {
     vbi_mod_mul_fast(result, left, left, curve);
 }
 
@@ -405,7 +405,7 @@ From http://eprint.iacr.org/2011/338.pdf
 static void apply_z(big * X1,
                     big * Y1,
                     const big * const Z,
-                    uECC_Curve curve) {
+                    Curve curve) {
     big t1[MAX_WORDS];
 
     vbi_mod_square_fast(t1, Z, curve);    /* z^2 */
@@ -415,7 +415,7 @@ static void apply_z(big * X1,
 }
 
 /* P = (x1, y1) => 2P, (x2, y2) => P' */
-static void XYcZ_initial_double(big * X1, big * Y1, big * X2, big * Y2, const big * const initial_Z, uECC_Curve curve) {
+static void XYcZ_initial_double(big * X1, big * Y1, big * X2, big * Y2, const big * const initial_Z, Curve curve) {
     big z[MAX_WORDS];
     count num_words = curve->num_words;
     if (initial_Z) {
@@ -437,7 +437,7 @@ static void XYcZ_initial_double(big * X1, big * Y1, big * X2, big * Y2, const bi
    Output P' = (x1', y1', Z3), P + Q = (x3, y3, Z3)
    or P => P', Q => P + Q
 */
-static void XYcZ_add(big * X1, big * Y1, big * X2, big * Y2, uECC_Curve curve) {
+static void XYcZ_add(big * X1, big * Y1, big * X2, big * Y2, Curve curve) {
     /* t1 = X1, t2 = Y1, t3 = X2, t4 = Y2 */
     big t5[MAX_WORDS];
     count num_words = curve->num_words;
@@ -464,7 +464,7 @@ static void XYcZ_add(big * X1, big * Y1, big * X2, big * Y2, uECC_Curve curve) {
    Output P + Q = (x3, y3, Z3), P - Q = (x3', y3', Z3)
    or P => P - Q, Q => P + Q
 */
-static void XYcZ_addC(big * X1, big * Y1, big * X2, big * Y2, uECC_Curve curve) {
+static void XYcZ_addC(big * X1, big * Y1, big * X2, big * Y2, Curve curve) {
     /* t1 = X1, t2 = Y1, t3 = X2, t4 = Y2 */
     big t5[MAX_WORDS];
     big t6[MAX_WORDS];
@@ -498,7 +498,7 @@ static void XYcZ_addC(big * X1, big * Y1, big * X2, big * Y2, uECC_Curve curve) 
 }
 
 /* result may overlap point. */
-static void EccPoint_mult(big * result, const big * point, const big * scalar, const big * initial_Z, bits num_bits, uECC_Curve curve) {
+static void EccPoint_mult(big * result, const big * point, const big * scalar, const big * initial_Z, bits num_bits, Curve curve) {
     /* R0 and R1 */
     big Rx[2][MAX_WORDS];
     big Ry[2][MAX_WORDS];
@@ -538,7 +538,7 @@ static void EccPoint_mult(big * result, const big * point, const big * scalar, c
     vbi_set(result + num_words, Ry[0], num_words);
 }
 
-static big regularize_k(const big * const k, big *k0, big *k1, uECC_Curve curve) {
+static big regularize_k(const big * const k, big *k0, big *k1, Curve curve) {
     count num_n_words = BITS_TO_WORDS(curve->num_n_bits);
     bits num_n_bits = curve->num_n_bits;
     big carry = vbi_add(k0, k, curve->n, num_n_words) ||
@@ -572,7 +572,7 @@ vbi_API int uECC_generate_random_int(big *random, const big *top, count num_word
     return 0;
 }
 
-static big EccPoint_compute_public_key(big *result, big *private_key, uECC_Curve curve) {
+static big EccPoint_compute_public_key(big *result, big *private_key, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
     big *p2[2] = {tmp1, tmp2};
@@ -621,7 +621,7 @@ vbi_API void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes) 
 
 
 /* 生成公钥和私钥 */
-int uECC_make_key(uint8_t *public_key, uint8_t *private_key, uECC_Curve curve) {
+int uECC_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
 
     big _private[MAX_WORDS];
     big _public[MAX_WORDS * 2];
@@ -647,7 +647,7 @@ int uECC_make_key(uint8_t *public_key, uint8_t *private_key, uECC_Curve curve) {
 }
 
 /* 共享密钥 */
-int uECC_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, uECC_Curve curve) {
+int uECC_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, Curve curve) {
     big _public[MAX_WORDS * 2];
     big _private[MAX_WORDS];
 
@@ -685,7 +685,7 @@ int uECC_shared_secret(const uint8_t *public_key, const uint8_t *private_key, ui
 }
 
 /* 有效的点 */
-vbi_API int uECC_valid_point(const big *point, uECC_Curve curve) {
+vbi_API int uECC_valid_point(const big *point, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
     count num_words = curve->num_words;
@@ -709,7 +709,7 @@ vbi_API int uECC_valid_point(const big *point, uECC_Curve curve) {
 }
 
 /* 有效的公钥 */
-int uECC_valid_public_key(const uint8_t *public_key, uECC_Curve curve) {
+int uECC_valid_public_key(const uint8_t *public_key, Curve curve) {
 
     big _public[MAX_WORDS * 2];
 
@@ -723,7 +723,7 @@ int uECC_valid_public_key(const uint8_t *public_key, uECC_Curve curve) {
 }
 
 /* 计算公钥 */
-int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, uECC_Curve curve) {
+int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Curve curve) {
 
     big _private[MAX_WORDS];
     big _public[MAX_WORDS * 2];
@@ -759,7 +759,7 @@ int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, uEC
 /* -------- ECDSA code -------- */
 
 /* 比特转整数 */
-static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, uECC_Curve curve) {
+static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, Curve curve) {
     unsigned num_n_bytes = BITS_TO_BYTES(curve->num_n_bits);
     unsigned num_n_words = BITS_TO_WORDS(curve->num_n_bits);
     int shift;
@@ -793,7 +793,7 @@ static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, uECC_
 }
 
 /* 用内部k签名 */
-static int uECC_sign_with_k_internal(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, big *k, uint8_t *signature, uECC_Curve curve) {
+static int uECC_sign_with_k_internal(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, big *k, uint8_t *signature, Curve curve) {
 
     big tmp[MAX_WORDS];
     big s[MAX_WORDS];
@@ -865,7 +865,7 @@ static int uECC_sign_with_k_internal(const uint8_t *private_key, const uint8_t *
 
 /* For testing - sign with an explicitly specified k value */
 /* 用k签名 */
-int uECC_sign_with_k(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *k, uint8_t *signature, uECC_Curve curve) {
+int uECC_sign_with_k(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *k, uint8_t *signature, Curve curve) {
     big k2[MAX_WORDS];
     bits2int(k2, k, BITS_TO_BYTES(curve->num_n_bits), curve);
     return uECC_sign_with_k_internal(private_key, message_hash, hash_size, k2, signature, curve);
@@ -876,7 +876,7 @@ int uECC_sign(const uint8_t *private_key,
               const uint8_t *message_hash,
               unsigned hash_size,
               uint8_t *signature,
-              uECC_Curve curve) {
+              Curve curve) {
     big k[MAX_WORDS];
     big tries;
 
@@ -941,7 +941,7 @@ static void update_V(const uECC_HashContext *hash_context, uint8_t *K, uint8_t *
 
    Layout of hash_context->tmp: <K> | <V> | (1 byte overlapped 0x00 or 0x01) / <HMAC pad> */
 /* 确定性签名 */
-int uECC_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, uECC_Curve curve) {
+int uECC_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, Curve curve) {
     uint8_t *K = hash_context->tmp;
     uint8_t *V = K + hash_context->result_size;
     count num_bytes = curve->num_bytes;
@@ -1014,7 +1014,7 @@ static bits smax(bits a, bits b) {
 }
 
 /* 验证 */
-int uECC_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, uECC_Curve curve) {
+int uECC_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, Curve curve) {
     big u1[MAX_WORDS], u2[MAX_WORDS];
     big z[MAX_WORDS];
     big sum[MAX_WORDS * 2];

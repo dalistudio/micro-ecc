@@ -18,8 +18,8 @@
 #endif
 
 
-struct uECC_Curve_t;
-typedef const struct uECC_Curve_t * uECC_Curve;
+struct Curve_t;
+typedef const struct Curve_t * Curve;
 
 #ifdef __cplusplus
 extern "C"
@@ -27,7 +27,7 @@ extern "C"
 #endif
 
 #if uECC_SUPPORTS_secp256k1
-uECC_Curve uECC_secp256k1(void);
+Curve uECC_secp256k1(void);
 #endif
 
 /* RNG_Function type
@@ -61,12 +61,12 @@ RNG_Function uECC_get_rng(void);
 /* 03、uECC_curve_private_key_size() function.
 返回曲线的私钥大小（字节）
 */
-int uECC_curve_private_key_size(uECC_Curve curve);
+int uECC_curve_private_key_size(Curve curve);
 
 /* 04、uECC_curve_public_key_size() function.
 返回曲线的公钥大小（字节）
 */
-int uECC_curve_public_key_size(uECC_Curve curve);
+int uECC_curve_public_key_size(Curve curve);
 
 /* 05、uECC_make_key() function.
 创建公钥/私钥的密钥对
@@ -79,7 +79,7 @@ Outputs:
 
 Returns 1 if the key pair was generated successfully, 0 if an error occurred.
 */
-int uECC_make_key(uint8_t *public_key, uint8_t *private_key, uECC_Curve curve);
+int uECC_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve);
 
 /* 06、uECC_shared_secret() function.
 根据您的密钥和其他人的公钥计算共享密钥。如果公钥不是来自受信任的来源，并且之前未经验证，则应首先使用uECC_valid_public_key() 进行验证。
@@ -94,7 +94,7 @@ Outputs:
 
 如果成功生成共享密钥，则返回1；如果发生错误，则返回0。
 */
-int uECC_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, uECC_Curve curve);
+int uECC_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, Curve curve);
 
 
 /* 09、uECC_valid_public_key() function.
@@ -107,7 +107,7 @@ Inputs:
 
 如果公钥有效，则返回1；如果公钥无效，则返回0。
 */
-int uECC_valid_public_key(const uint8_t *public_key, uECC_Curve curve);
+int uECC_valid_public_key(const uint8_t *public_key, Curve curve);
 
 /* 10、uECC_compute_public_key() function.
 为私钥计算相应的公钥。
@@ -120,7 +120,7 @@ Outputs:
 
 如果密钥计算成功，则返回1；如果发生错误，则返回0。
 */
-int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, uECC_Curve curve);
+int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Curve curve);
 
 /* 11、uECC_sign() function.
 为给定哈希值生成ECDSA签名。
@@ -137,7 +137,7 @@ Outputs:
 
 如果成功生成签名，则返回1；如果发生错误，则返回0。
 */
-int uECC_sign(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, uint8_t *signature, uECC_Curve curve);
+int uECC_sign(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, uint8_t *signature, Curve curve);
 
 /* uECC_HashContext structure.
 这用于将任意哈希函数传递给uECC_sign_deterministic()。该结构将用于多个散列计算；每次计算新的哈希时，都会调用init_hash()，
@@ -169,7 +169,7 @@ Outputs:
 
 如果成功生成签名，则返回1；如果发生错误，则返回0。
 */
-int uECC_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, uECC_Curve curve);
+int uECC_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, Curve curve);
 
 /* 13、uECC_verify() function.
 验证ECDSA签名。
@@ -184,7 +184,7 @@ Inputs:
 
 如果签名有效，则返回1；如果签名无效，则返回0。
 */
-int uECC_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, uECC_Curve curve);
+int uECC_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, Curve curve);
 
 #ifdef __cplusplus
 } /* end of extern "C" */
