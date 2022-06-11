@@ -94,10 +94,7 @@ Outputs:
 
 如果成功生成共享密钥，则返回1；如果发生错误，则返回0。
 */
-int uECC_shared_secret(const uint8_t *public_key,
-                       const uint8_t *private_key,
-                       uint8_t *secret,
-                       uECC_Curve curve);
+int uECC_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, uECC_Curve curve);
 
 
 /* 09、uECC_valid_public_key() function.
@@ -140,11 +137,7 @@ Outputs:
 
 如果成功生成签名，则返回1；如果发生错误，则返回0。
 */
-int uECC_sign(const uint8_t *private_key,
-              const uint8_t *message_hash,
-              unsigned hash_size,
-              uint8_t *signature,
-              uECC_Curve curve);
+int uECC_sign(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, uint8_t *signature, uECC_Curve curve);
 
 /* uECC_HashContext structure.
 这用于将任意哈希函数传递给uECC_sign_deterministic()。该结构将用于多个散列计算；每次计算新的哈希时，都会调用init_hash()，
@@ -153,9 +146,7 @@ int uECC_sign(const uint8_t *private_key,
 */
 typedef struct uECC_HashContext {
     void (*init_hash)(const struct uECC_HashContext *context);
-    void (*update_hash)(const struct uECC_HashContext *context,
-                        const uint8_t *message,
-                        unsigned message_size);
+    void (*update_hash)(const struct uECC_HashContext *context, const uint8_t *message, unsigned message_size);
     void (*finish_hash)(const struct uECC_HashContext *context, uint8_t *hash_result);
     unsigned block_size; /* Hash function block size in bytes, eg 64 for SHA-256. */
     unsigned result_size; /* Hash function result size in bytes, eg 32 for SHA-256. */
@@ -178,12 +169,7 @@ Outputs:
 
 如果成功生成签名，则返回1；如果发生错误，则返回0。
 */
-int uECC_sign_deterministic(const uint8_t *private_key,
-                            const uint8_t *message_hash,
-                            unsigned hash_size,
-                            const uECC_HashContext *hash_context,
-                            uint8_t *signature,
-                            uECC_Curve curve);
+int uECC_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, uECC_Curve curve);
 
 /* 13、uECC_verify() function.
 验证ECDSA签名。
@@ -198,11 +184,7 @@ Inputs:
 
 如果签名有效，则返回1；如果签名无效，则返回0。
 */
-int uECC_verify(const uint8_t *public_key,
-                const uint8_t *message_hash,
-                unsigned hash_size,
-                const uint8_t *signature,
-                uECC_Curve curve);
+int uECC_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, uECC_Curve curve);
 
 #ifdef __cplusplus
 } /* end of extern "C" */
