@@ -10,5 +10,5 @@ __pycache__
 echdh
 ecdsa
 compute
-ecdsa_test_vectors
+public
 ecdsa_test_vectors
