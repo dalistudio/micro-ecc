@@ -753,7 +753,7 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
 }
 
 // 08.曲线点有效验证
-int uECC_valid_point(const big *point, Curve curve) {
+int curve_valid_point(const big *point, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
     count n = curve->word;
@@ -785,7 +785,7 @@ int curve_valid_public_key(const uint8_t *public_key, Curve curve) {
     vbi_bytes_native(
         _public + curve->word, public_key + curve->byte, curve->byte);
 
-    return uECC_valid_point(_public, curve);
+    return curve_valid_point(_public, curve);
 }
 
 // 06.根据私钥计算公钥
