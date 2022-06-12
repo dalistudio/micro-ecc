@@ -126,14 +126,12 @@ bits vbi_num_bits(const big *vbi, const count max_words) {
 
 /* Sets dest = src. */
 /* 大整数赋值 */
-#if !asm_set
 void vbi_set(big *dest, const big *src, count n) {
     count i;
     for (i = 0; i < n; ++i) {
         dest[i] = src[i];
     }
 }
-#endif /* !asm_set */
 
 /* Returns sign of left - right. */
 /* 不安全比较 */
