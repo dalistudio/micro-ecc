@@ -1,5 +1,3 @@
-/* Copyright 2014, Kenneth MacKay. Licensed under the BSD 2-clause license. */
-
 #ifndef _CURVE_H_
 #define _CURVE_H_
 
@@ -13,10 +11,7 @@ typedef uint64_t big2;
 
 #define MAX_WORDS 8
 #define WORD_SIZE 4
-#define HIGH_BIT_SET 0x80000000
 #define WORD_BITS 32
-#define WORD_BITS_SHIFT 5
-#define WORD_BITS_MASK 0x01F
 #define RNG_MAX_TRIES 64
 
 #define BITS_TO_WORDS(num_bits) ((num_bits + ((WORD_SIZE * 8) - 1)) / (WORD_SIZE * 8))
@@ -108,12 +103,12 @@ static big EccPoint_compute_public_key(big *result, big *private_key, Curve curv
 // 08.曲线点有效验证
 int curve_valid_point(const big *point, Curve curve);
 
+
+
 // 23.曲线大整数相乘求模
 void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve);
 
 // 24.曲线大整数平方求模
 void vbi_mod_square_fast(big *result, const big *left, Curve curve);
-
-
 
 #endif /* _CURVE_H_ */

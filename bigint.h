@@ -18,7 +18,6 @@ typedef uint64_t big2;
 #define WORD_BITS 32
 #define WORD_BITS_SHIFT 5
 #define WORD_BITS_MASK 0x01F
-#define RNG_MAX_TRIES 64
 
 // 01.大整数清理
 void vbi_clear(big *vbi, count n);
