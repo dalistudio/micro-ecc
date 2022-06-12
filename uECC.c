@@ -2,13 +2,6 @@
 
 #include "uECC.h"
 
-#define RNG_MAX_TRIES 64
-
-#define MAX_WORDS 8
-
-#define BITS_TO_WORDS(num_bits) ((num_bits + ((WORD_SIZE * 8) - 1)) / (WORD_SIZE * 8))
-#define BITS_TO_BYTES(num_bits) ((num_bits + 7) / 8)
-
 /* 兼容 POSIX 系统 */
 #include <sys/types.h>
 #include <fcntl.h>
@@ -39,20 +32,6 @@ static int default_RNG(uint8_t *dest, unsigned size) {
     return 1;
 }
 
-struct Curve_t {
-    count word;
-    count byte;
-    bits bit;
-    big p[MAX_WORDS];
-    big n[MAX_WORDS];
-    big g[MAX_WORDS * 2];
-    big b[MAX_WORDS];
-    void (*double_jacobian)(big * X1, big * Y1, big * Z1, Curve curve);
-    void (*x_side)(big *result, const big *x, Curve curve);
-    void (*mmod_fast)(big *result, big *product);
-};
-
-static cmp vbi_cmp_unsafe(const big *left, const big *right, count n);
 static RNG_Function g_rng_function = &default_RNG;
 void curve_set_rng(RNG_Function rng_function) {
     g_rng_function = rng_function;
@@ -159,7 +138,7 @@ big vbi_equal(const big *left, const big *right, count n) {
     return (diff == 0);
 }
 
-big vbi_sub(big *result, const big *left, const big *right, count n);
+//big vbi_sub(big *result, const big *left, const big *right, count n);
 
 /* Returns sign of left - right, in constant time. */
 /* 比较 */
@@ -172,7 +151,6 @@ cmp vbi_cmp(const big *left, const big *right, count n) {
 
 /* Computes vbi = vbi >> 1. */
 /* 右移1位 */
-#if !asm_rshift1
 void vbi_rshift1(big *vbi, count n) {
     big *end = vbi;
     big carry = 0;
@@ -184,11 +162,9 @@ void vbi_rshift1(big *vbi, count n) {
         carry = temp << (WORD_BITS - 1);
     }
 }
-#endif /* !asm_rshift1 */
 
 /* Computes result = left + right, returning carry. Can modify in place. */
 /* 加法 */
-#if !asm_add
 big vbi_add(big *result, const big *left, const big *right, count n) {
     big carry = 0; /* 进位 */
     count i;
@@ -201,11 +177,9 @@ big vbi_add(big *result, const big *left, const big *right, count n) {
     }
     return carry;
 }
-#endif /* !asm_add */
 
 /* Computes result = left - right, returning borrow. Can modify in place. */
 /* 减法 */
-#if !asm_sub
 big vbi_sub(big *result, const big *left, const big *right, count n) {
     big borrow = 0; /* 借位 */
     count i;
@@ -218,22 +192,18 @@ big vbi_sub(big *result, const big *left, const big *right, count n) {
     }
     return borrow;
 }
-#endif /* !asm_sub */
 
 /* 乘加 */
 static void muladd(big a, big b, big *r0, big *r1, big *r2) {
-
     big2 p = (big2)a * b;
     big2 r01 = ((big2)(*r1) << WORD_BITS) | *r0;
     r01 += p;
     *r2 += (r01 < p);
     *r1 = r01 >> WORD_BITS;
     *r0 = (big)r01;
-
 }
 
 /* 乘法 */
-#if !asm_mult
 void vbi_mul(big *result, const big *left, const big *right, count n) {
     big r0 = 0;
     big r1 = 0;
@@ -261,7 +231,6 @@ void vbi_mul(big *result, const big *left, const big *right, count n) {
     }
     result[n * 2 - 1] = r0;
 }
-#endif /* !asm_mult */
 
 /* Computes result = (left + right) % mod.
    Assumes that left < mod and right < mod, and that result does not overlap mod. */
@@ -413,18 +382,6 @@ void vbi_mod_inv(big *result, const big *input, const big *mod, count n) {
 /* ------ Point operations ------ */
 /* ------ 点操作 ------*/
 
-#define secp256k1_bytes 32
-#define secp256k1_words 8
-
-#define BYTES_TO_WORDS_8(a, b, c, d, e, f, g, h) 0x##d##c##b##a, 0x##h##g##f##e
-#define BYTES_TO_WORDS_4(a, b, c, d) 0x##d##c##b##a
-
-
-static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, Curve curve);
-static void x_side_secp256k1(big *result, const big *x, Curve curve);
-static void vbi_mmod_fast_secp256k1(big *result, big *product);
-
-
 static const struct Curve_t curve_secp256k1 = {
     secp256k1_words,
     secp256k1_bytes,
@@ -502,7 +459,7 @@ static void x_side_secp256k1(big *result, const big *x, Curve curve) {
 }
 
 
-static void omega_mult_secp256k1(big *result, const big *right);
+//static void omega_mult_secp256k1(big *result, const big *right);
 static void vbi_mmod_fast_secp256k1(big *result, big *product) {
     big tmp[2 * secp256k1_words];
     big carry;
