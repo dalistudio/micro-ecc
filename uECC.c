@@ -1,17 +1,43 @@
 /* Copyright 2014, Kenneth MacKay. Licensed under the BSD 2-clause license. */
 
 #include "uECC.h"
-#include "types.h"
 
 #define RNG_MAX_TRIES 64
-#define vbi_API static
-
-#include "platform-specific.h"
 
 #define MAX_WORDS 8
 
 #define BITS_TO_WORDS(num_bits) ((num_bits + ((WORD_SIZE * 8) - 1)) / (WORD_SIZE * 8))
 #define BITS_TO_BYTES(num_bits) ((num_bits + 7) / 8)
+
+/* 兼容 POSIX 系统 */
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+static int default_RNG(uint8_t *dest, unsigned size) {
+    int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+    if (fd == -1) {
+        fd = open("/dev/random", O_RDONLY | O_CLOEXEC);
+        if (fd == -1) {
+            return 0;
+        }
+    }
+    
+    char *ptr = (char *)dest;
+    size_t left = size;
+    while (left > 0) {
+        ssize_t bytes_read = read(fd, ptr, left);
+        if (bytes_read <= 0) { // read failed
+            close(fd);
+            return 0;
+        }
+        left -= bytes_read;
+        ptr += bytes_read;
+    }
+    
+    close(fd);
+    return 1;
+}
 
 struct Curve_t {
     count word;
@@ -44,7 +70,7 @@ int curve_public_key_size(Curve curve) {
     return 2 * curve->byte;
 }
 
-vbi_API void vbi_clear(big *vbi, count n) {
+void vbi_clear(big *vbi, count n) {
     count i;
     for (i = 0; i < n; ++i) {
         vbi[i] = 0;
@@ -54,7 +80,7 @@ vbi_API void vbi_clear(big *vbi, count n) {
 /* Constant-time comparison to zero - secure way to compare long integers */
 /* Returns 1 if vbi == 0, 0 otherwise. */
 /* 是否为零 */
-vbi_API big vbi_is_zero(const big *vbi, count n) {
+big vbi_is_zero(const big *vbi, count n) {
     big bits = 0;
     count i;
     for (i = 0; i < n; ++i) {
@@ -65,7 +91,7 @@ vbi_API big vbi_is_zero(const big *vbi, count n) {
 
 /* 测试比特位 */
 /* Returns nonzero if bit 'bit' of vbi is set. */
-vbi_API big vbi_test_bit(const big *vbi, bits bit) {
+big vbi_test_bit(const big *vbi, bits bit) {
     return (vbi[bit >> WORD_BITS_SHIFT] & ((big)1 << (bit & WORD_BITS_MASK)));
 }
 
@@ -81,7 +107,7 @@ static count vbi_num_digits(const big *vbi, const count max_words) {
 }
 
 /* Counts the number of bits required to represent vbi. */
-vbi_API bits vbi_num_bits(const big *vbi, const count max_words) {
+bits vbi_num_bits(const big *vbi, const count max_words) {
     big i;
     big digit;
 
@@ -101,7 +127,7 @@ vbi_API bits vbi_num_bits(const big *vbi, const count max_words) {
 /* Sets dest = src. */
 /* 大整数赋值 */
 #if !asm_set
-vbi_API void vbi_set(big *dest, const big *src, count n) {
+void vbi_set(big *dest, const big *src, count n) {
     count i;
     for (i = 0; i < n; ++i) {
         dest[i] = src[i];
@@ -126,7 +152,7 @@ static cmp vbi_cmp_unsafe(const big *left, const big *right, count n) {
 /* Constant-time comparison function - secure way to compare long integers */
 /* Returns one if left == right, zero otherwise. */
 /* 等于 */
-vbi_API big vbi_equal(const big *left, const big *right, count n) {
+big vbi_equal(const big *left, const big *right, count n) {
     big diff = 0;
     count i;
     for (i = n - 1; i >= 0; --i) {
@@ -135,11 +161,11 @@ vbi_API big vbi_equal(const big *left, const big *right, count n) {
     return (diff == 0);
 }
 
-vbi_API big vbi_sub(big *result, const big *left, const big *right, count n);
+big vbi_sub(big *result, const big *left, const big *right, count n);
 
 /* Returns sign of left - right, in constant time. */
 /* 比较 */
-vbi_API cmp vbi_cmp(const big *left, const big *right, count n) {
+cmp vbi_cmp(const big *left, const big *right, count n) {
     big tmp[MAX_WORDS];
     big neg = !!vbi_sub(tmp, left, right, n);
     big equal = vbi_is_zero(tmp, n);
@@ -149,7 +175,7 @@ vbi_API cmp vbi_cmp(const big *left, const big *right, count n) {
 /* Computes vbi = vbi >> 1. */
 /* 右移1位 */
 #if !asm_rshift1
-vbi_API void vbi_rshift1(big *vbi, count n) {
+void vbi_rshift1(big *vbi, count n) {
     big *end = vbi;
     big carry = 0;
 
@@ -165,7 +191,7 @@ vbi_API void vbi_rshift1(big *vbi, count n) {
 /* Computes result = left + right, returning carry. Can modify in place. */
 /* 加法 */
 #if !asm_add
-vbi_API big vbi_add(big *result, const big *left, const big *right, count n) {
+big vbi_add(big *result, const big *left, const big *right, count n) {
     big carry = 0; /* 进位 */
     count i;
     for (i = 0; i < n; ++i) {
@@ -182,7 +208,7 @@ vbi_API big vbi_add(big *result, const big *left, const big *right, count n) {
 /* Computes result = left - right, returning borrow. Can modify in place. */
 /* 减法 */
 #if !asm_sub
-vbi_API big vbi_sub(big *result, const big *left, const big *right, count n) {
+big vbi_sub(big *result, const big *left, const big *right, count n) {
     big borrow = 0; /* 借位 */
     count i;
     for (i = 0; i < n; ++i) {
@@ -210,7 +236,7 @@ static void muladd(big a, big b, big *r0, big *r1, big *r2) {
 
 /* 乘法 */
 #if !asm_mult
-vbi_API void vbi_mul(big *result, const big *left, const big *right, count n) {
+void vbi_mul(big *result, const big *left, const big *right, count n) {
     big r0 = 0;
     big r1 = 0;
     big r2 = 0;
@@ -242,7 +268,7 @@ vbi_API void vbi_mul(big *result, const big *left, const big *right, count n) {
 /* Computes result = (left + right) % mod.
    Assumes that left < mod and right < mod, and that result does not overlap mod. */
 /* 相加求模 */
-vbi_API void vbi_mod_add(big *result, const big *left, const big *right, const big *mod, count n) {
+void vbi_mod_add(big *result, const big *left, const big *right, const big *mod, count n) {
     big carry = vbi_add(result, left, right, n);
     if (carry || vbi_cmp_unsafe(mod, result, n) != 1) {
         /* result > mod (result = mod + remainder), so subtract mod to get remainder. */
@@ -253,7 +279,7 @@ vbi_API void vbi_mod_add(big *result, const big *left, const big *right, const b
 /* Computes result = (left - right) % mod.
    Assumes that left < mod and right < mod, and that result does not overlap mod. */
 /* 相减求模 */
-vbi_API void vbi_mod_sub(big *result, const big *left, const big *right, const big *mod, count n) {
+void vbi_mod_sub(big *result, const big *left, const big *right, const big *mod, count n) {
     big l_borrow = vbi_sub(result, left, right, n);
     if (l_borrow) {
         /* In this case, result == -diff == (max int) - diff. Since -x % d == d - x,
@@ -265,7 +291,7 @@ vbi_API void vbi_mod_sub(big *result, const big *left, const big *right, const b
 /* Computes result = product % mod, where product is 2N words long. */
 /* Currently only designed to work for curve_p or curve_n. */
 /* 求模 */
-vbi_API void vbi_mmod(big *result, big *product, const big *mod, count n) {
+void vbi_mmod(big *result, big *product, const big *mod, count n) {
     big mod_multiple[2 * MAX_WORDS];
     big tmp[2 * MAX_WORDS];
     big *v[2] = {tmp, product};
@@ -306,14 +332,14 @@ vbi_API void vbi_mmod(big *result, big *product, const big *mod, count n) {
 
 /* Computes result = (left * right) % mod. */
 /* 相乘求模 */
-vbi_API void vbi_mod_mul(big *result, const big *left, const big *right, const big *mod, count n) {
+void vbi_mod_mul(big *result, const big *left, const big *right, const big *mod, count n) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, n);
     vbi_mmod(result, product, mod, n);
 }
 
 /* 曲线相乘求模 */
-vbi_API void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve) {
+void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, curve->word);
 
@@ -322,7 +348,7 @@ vbi_API void vbi_mod_mul_fast(big *result, const big *left, const big *right, Cu
 }
 
 /* 曲线平方求模 */
-vbi_API void vbi_mod_square_fast(big *result, const big *left, Curve curve) {
+void vbi_mod_square_fast(big *result, const big *left, Curve curve) {
     vbi_mod_mul_fast(result, left, left, curve);
 }
 
@@ -344,7 +370,7 @@ static void vbi_mod_inv_update(big *uv, const big *mod, count n) {
 /* Computes result = (1 / input) % mod. All VLIs are the same size.
    See "From Euclid's GCD to Montgomery Multiplication to the Great Divide" */
 /* 取反求模 */
-vbi_API void vbi_mod_inv(big *result, const big *input, const big *mod, count n) {
+void vbi_mod_inv(big *result, const big *input, const big *mod, count n) {
     big a[MAX_WORDS], b[MAX_WORDS], u[MAX_WORDS], v[MAX_WORDS];
     cmp cmpResult;
 
@@ -548,7 +574,7 @@ static big regularize_k(const big * const k, big *k0, big *k1, Curve curve) {
 
 /* Generates a random integer in the range 0 < random < top.
    Both random and top have n words. */
-vbi_API int generate_random_int(big *random, const big *top, count n) {
+int generate_random_int(big *random, const big *top, count n) {
     big mask = (big)-1;
     big tries;
     bits num_bits = vbi_num_bits(top, n);
@@ -598,7 +624,7 @@ static big EccPoint_compute_public_key(big *result, big *private_key, Curve curv
 }
 
 
-vbi_API void vbi_native_bytes(uint8_t *bytes, int num_bytes, const big *native) {
+void vbi_native_bytes(uint8_t *bytes, int num_bytes, const big *native) {
     int i;
     for (i = 0; i < num_bytes; ++i) {
         unsigned b = num_bytes - 1 - i;
@@ -606,7 +632,7 @@ vbi_API void vbi_native_bytes(uint8_t *bytes, int num_bytes, const big *native) 
     }
 }
 
-vbi_API void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes) {
+void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes) {
     int i;
     vbi_clear(native, (num_bytes + (WORD_SIZE - 1)) / WORD_SIZE);
     for (i = 0; i < num_bytes; ++i) {
@@ -683,7 +709,7 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
 }
 
 /* 有效的点 */
-vbi_API int uECC_valid_point(const big *point, Curve curve) {
+int uECC_valid_point(const big *point, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
     count n = curve->word;
