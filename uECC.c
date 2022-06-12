@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+// 04.默认随机数
 static int default_RNG(uint8_t *dest, unsigned size) {
     int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     if (fd == -1) {
@@ -32,22 +33,28 @@ static int default_RNG(uint8_t *dest, unsigned size) {
 }
 
 static RNG_Function g_rng_function = &default_RNG;
+
+// 02.设置随机数
 void curve_set_rng(RNG_Function rng_function) {
     g_rng_function = rng_function;
 }
 
+// 03.获得随机数
 RNG_Function curve_get_rng(void) {
     return g_rng_function;
 }
 
+// 02.获得私有密钥大小
 int curve_private_key_size(Curve curve) {
     return BITS_TO_BYTES(curve->bit);
 }
 
+// 03.获得公有密钥大小
 int curve_public_key_size(Curve curve) {
     return 2 * curve->byte;
 }
 
+// 01.大整数清理
 void vbi_clear(big *vbi, count n) {
     count i;
     for (i = 0; i < n; ++i) {
@@ -55,6 +62,7 @@ void vbi_clear(big *vbi, count n) {
     }
 }
 
+// 02.大整数是否为零
 big vbi_is_zero(const big *vbi, count n) {
     big bits = 0;
     count i;
@@ -64,11 +72,12 @@ big vbi_is_zero(const big *vbi, count n) {
     return (bits == 0);
 }
 
+// 03.大整数比特位测试
 big vbi_test_bit(const big *vbi, bits bit) {
     return (vbi[bit >> WORD_BITS_SHIFT] & ((big)1 << (bit & WORD_BITS_MASK)));
 }
 
-
+// 04.大整数的字位数
 static count vbi_num_digits(const big *vbi, const count max_words) {
     count i;
     for (i = max_words - 1; i >= 0 && vbi[i] == 0; --i) {
@@ -77,6 +86,7 @@ static count vbi_num_digits(const big *vbi, const count max_words) {
     return (i + 1);
 }
 
+// 05.大整数的比特位数
 bits vbi_num_bits(const big *vbi, const count max_words) {
     big i;
     big digit;
@@ -94,6 +104,7 @@ bits vbi_num_bits(const big *vbi, const count max_words) {
     return (((bits)(num_digits - 1) << WORD_BITS_SHIFT) + i);
 }
 
+// 06.大整数复制
 void vbi_set(big *dest, const big *src, count n) {
     count i;
     for (i = 0; i < n; ++i) {
@@ -101,6 +112,17 @@ void vbi_set(big *dest, const big *src, count n) {
     }
 }
 
+// 07.判断大整数是否等于
+big vbi_equal(const big *left, const big *right, count n) {
+    big diff = 0;
+    count i;
+    for (i = n - 1; i >= 0; --i) {
+        diff |= (left[i] ^ right[i]);
+    }
+    return (diff == 0);
+}
+
+// 08.不安全的大整数比较
 static cmp vbi_cmp_unsafe(const big *left, const big *right, count n) {
     count i;
     for (i = n - 1; i >= 0; --i) {
@@ -113,15 +135,7 @@ static cmp vbi_cmp_unsafe(const big *left, const big *right, count n) {
     return 0;
 }
 
-big vbi_equal(const big *left, const big *right, count n) {
-    big diff = 0;
-    count i;
-    for (i = n - 1; i >= 0; --i) {
-        diff |= (left[i] ^ right[i]);
-    }
-    return (diff == 0);
-}
-
+// 09.大整数比较
 cmp vbi_cmp(const big *left, const big *right, count n) {
     big tmp[MAX_WORDS];
     big neg = !!vbi_sub(tmp, left, right, n);
@@ -129,6 +143,7 @@ cmp vbi_cmp(const big *left, const big *right, count n) {
     return (!equal - 2 * neg);
 }
 
+// 10.大整数右移1位
 void vbi_rshift1(big *vbi, count n) {
     big *end = vbi;
     big carry = 0;
@@ -141,6 +156,7 @@ void vbi_rshift1(big *vbi, count n) {
     }
 }
 
+// 11.大整数加法
 big vbi_add(big *result, const big *left, const big *right, count n) {
     big carry = 0; /* 进位 */
     count i;
@@ -154,6 +170,7 @@ big vbi_add(big *result, const big *left, const big *right, count n) {
     return carry;
 }
 
+// 12.大整数减法
 big vbi_sub(big *result, const big *left, const big *right, count n) {
     big borrow = 0; /* 借位 */
     count i;
@@ -167,6 +184,7 @@ big vbi_sub(big *result, const big *left, const big *right, count n) {
     return borrow;
 }
 
+// 13.大整数乘加
 static void muladd(big a, big b, big *r0, big *r1, big *r2) {
     big2 p = (big2)a * b;
     big2 r01 = ((big2)(*r1) << WORD_BITS) | *r0;
@@ -176,6 +194,7 @@ static void muladd(big a, big b, big *r0, big *r1, big *r2) {
     *r0 = (big)r01;
 }
 
+// 14.大整数乘法
 void vbi_mul(big *result, const big *left, const big *right, count n) {
     big r0 = 0;
     big r1 = 0;
@@ -203,6 +222,7 @@ void vbi_mul(big *result, const big *left, const big *right, count n) {
     result[n * 2 - 1] = r0;
 }
 
+// 15.大整数相加求模
 void vbi_mod_add(big *result, const big *left, const big *right, const big *mod, count n) {
     big carry = vbi_add(result, left, right, n);
     if (carry || vbi_cmp_unsafe(mod, result, n) != 1) {
@@ -210,6 +230,7 @@ void vbi_mod_add(big *result, const big *left, const big *right, const big *mod,
     }
 }
 
+// 16.大整数相减求模
 void vbi_mod_sub(big *result, const big *left, const big *right, const big *mod, count n) {
     big l_borrow = vbi_sub(result, left, right, n);
     if (l_borrow) {
@@ -217,6 +238,7 @@ void vbi_mod_sub(big *result, const big *left, const big *right, const big *mod,
     }
 }
 
+// 17.大整数求模
 void vbi_mmod(big *result, big *product, const big *mod, count n) {
     big mod_multiple[2 * MAX_WORDS];
     big tmp[2 * MAX_WORDS];
@@ -255,12 +277,14 @@ void vbi_mmod(big *result, big *product, const big *mod, count n) {
     vbi_set(result, v[index], n);
 }
 
+// 18.大整数相乘求模
 void vbi_mod_mul(big *result, const big *left, const big *right, const big *mod, count n) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, n);
     vbi_mmod(result, product, mod, n);
 }
 
+// 21.曲线大整数相乘求模
 void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, curve->word);
@@ -269,11 +293,13 @@ void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curv
 
 }
 
+// 22.曲线大整数平方求模
 void vbi_mod_square_fast(big *result, const big *left, Curve curve) {
     vbi_mod_mul_fast(result, left, left, curve);
 }
 
 #define EVEN(vbi) (!(vbi[0] & 1))
+// 19.大整数取反求模更新
 static void vbi_mod_inv_update(big *uv, const big *mod, count n) {
     big carry = 0;
     if (!EVEN(uv)) {
@@ -285,6 +311,7 @@ static void vbi_mod_inv_update(big *uv, const big *mod, count n) {
     }
 }
 
+// 20.大整数取反求模
 void vbi_mod_inv(big *result, const big *input, const big *mod, count n) {
     big a[MAX_WORDS], b[MAX_WORDS], u[MAX_WORDS], v[MAX_WORDS];
     cmp cmpResult;
@@ -358,9 +385,10 @@ static const struct Curve_t curve_secp256k1 = {
     &vbi_mmod_fast_secp256k1
 };
 
+// 01.获得曲线参数
 Curve secp256k1(void) { return &curve_secp256k1; }
 
-/* Double in place */
+// 02.双雅可比函数
 static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, Curve curve) {
     /* t1 = X, t2 = Y, t3 = Z */
     big t4[secp256k1_words];
@@ -396,6 +424,7 @@ static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, Curve curve)
     vbi_mod_sub(Y1, Y1, t5, curve->p, secp256k1_words); /* t2 = B * (A - x3) - y1^4 = y3 */
 }
 
+// 03.
 /* Computes result = x^3 + b. result must not overlap x. */
 static void x_side_secp256k1(big *result, const big *x, Curve curve) {
     vbi_mod_square_fast(result, x, curve);                                /* r = x^2 */
@@ -403,6 +432,7 @@ static void x_side_secp256k1(big *result, const big *x, Curve curve) {
     vbi_mod_add(result, result, curve->b, curve->p, secp256k1_words); /* r = x^3 + b */
 }
 
+// 04.
 static void vbi_mmod_fast_secp256k1(big *result, big *product) {
     big tmp[2 * secp256k1_words];
     big carry;
@@ -426,6 +456,7 @@ static void vbi_mmod_fast_secp256k1(big *result, big *product) {
     }
 }
 
+// 05.
 static void omega_mult_secp256k1(uint32_t * result, const uint32_t * right) {
     /* Multiply by (2^9 + 2^8 + 2^7 + 2^6 + 2^4 + 1). */
     uint32_t carry = 0;
@@ -598,6 +629,7 @@ static big regularize_k(const big * const k, big *k0, big *k1, Curve curve) {
     return carry;
 }
 
+// 01.生成随机整数
 int generate_random_int(big *random, const big *top, count n) {
     big mask = (big)-1;
     big tries;
@@ -662,6 +694,7 @@ void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes) {
     }
 }
 
+// 01.生成密钥对
 int curve_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
 
     big _private[MAX_WORDS];
@@ -687,6 +720,7 @@ int curve_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
     return 0;
 }
 
+// 04.生成共享密钥
 int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, Curve curve) {
     big _public[MAX_WORDS * 2];
     big _private[MAX_WORDS];
@@ -742,6 +776,7 @@ int uECC_valid_point(const big *point, Curve curve) {
     return (int)(vbi_equal(tmp1, tmp2, n));
 }
 
+// 05.验证公钥是否有效
 int curve_valid_public_key(const uint8_t *public_key, Curve curve) {
 
     big _public[MAX_WORDS * 2];
@@ -753,6 +788,7 @@ int curve_valid_public_key(const uint8_t *public_key, Curve curve) {
     return uECC_valid_point(_public, curve);
 }
 
+// 06.根据私钥计算公钥
 int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Curve curve) {
 
     big _private[MAX_WORDS];
@@ -817,6 +853,7 @@ static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, Curve
     }
 }
 
+// 07.数字签名
 static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, big *k, uint8_t *signature, Curve curve) {
 
     big tmp[MAX_WORDS];
@@ -917,6 +954,7 @@ static bits smax(bits a, bits b) {
     return (a > b ? a : b);
 }
 
+// 08.验证签名
 int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, Curve curve) {
     big u1[MAX_WORDS], u2[MAX_WORDS];
     big z[MAX_WORDS];
