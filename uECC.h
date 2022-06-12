@@ -99,6 +99,14 @@ static void vbi_mmod_fast_secp256k1(big *result, big *product);
 // 05.
 static void omega_mult_secp256k1(big *result, const big *right);
 
+// 06.曲线点乘
+static void EccPoint_mult(big * result, const big * point, const big * scalar, const big * initial_Z, bits num_bits, Curve curve);
+
+// 07.曲线点公钥计算
+static big EccPoint_compute_public_key(big *result, big *private_key, Curve curve);
+
+// 08.曲线点有效验证
+int curve_valid_point(const big *point, Curve curve);
 
 
 // 01.大整数清理
@@ -161,10 +169,16 @@ static void vbi_mod_inv_update(big *uv, const big *mod, count n);
 // 20.大整数取反求模
 void vbi_mod_inv(big *result, const big *input, const big *mod, count n);
 
-// 21.曲线大整数相乘求模
+// 21.原生格式的整数 转为 大端字节数组
+void vbi_native_bytes(uint8_t *bytes, int num_bytes, const big *native);
+
+// 22.大端字节数组 转为 原生格式的整数
+void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes);
+
+// 23.曲线大整数相乘求模
 void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve);
 
-// 22.曲线大整数平方求模
+// 24.曲线大整数平方求模
 void vbi_mod_square_fast(big *result, const big *left, Curve curve);
 
 

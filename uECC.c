@@ -284,7 +284,7 @@ void vbi_mod_mul(big *result, const big *left, const big *right, const big *mod,
     vbi_mmod(result, product, mod, n);
 }
 
-// 21.曲线大整数相乘求模
+// 23.曲线大整数相乘求模
 void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, curve->word);
@@ -293,7 +293,7 @@ void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curv
 
 }
 
-// 22.曲线大整数平方求模
+// 24.曲线大整数平方求模
 void vbi_mod_square_fast(big *result, const big *left, Curve curve) {
     vbi_mod_mul_fast(result, left, left, curve);
 }
@@ -483,10 +483,7 @@ From http://eprint.iacr.org/2011/338.pdf
 */
 
 /* Modify (x1, y1) => (x1 * z^2, y1 * z^3) */
-static void apply_z(big * X1,
-                    big * Y1,
-                    const big * const Z,
-                    Curve curve) {
+static void apply_z(big * X1, big * Y1, const big * const Z, Curve curve) {
     big t1[MAX_WORDS];
 
     vbi_mod_square_fast(t1, Z, curve);    /* z^2 */
@@ -578,7 +575,7 @@ static void XYcZ_addC(big * X1, big * Y1, big * X2, big * Y2, Curve curve) {
     vbi_set(X1, t7, n);
 }
 
-/* result may overlap point. */
+// 06.曲线点乘
 static void EccPoint_mult(big * result, const big * point, const big * scalar, const big * initial_Z, bits num_bits, Curve curve) {
     /* R0 and R1 */
     big Rx[2][MAX_WORDS];
@@ -652,6 +649,7 @@ int generate_random_int(big *random, const big *top, count n) {
     return 0;
 }
 
+// 07.曲线点公钥计算
 static big EccPoint_compute_public_key(big *result, big *private_key, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
@@ -675,7 +673,7 @@ static big EccPoint_compute_public_key(big *result, big *private_key, Curve curv
     return 1;
 }
 
-
+// 21.原生格式的整数 转为 大端字节数组
 void vbi_native_bytes(uint8_t *bytes, int num_bytes, const big *native) {
     int i;
     for (i = 0; i < num_bytes; ++i) {
@@ -684,6 +682,7 @@ void vbi_native_bytes(uint8_t *bytes, int num_bytes, const big *native) {
     }
 }
 
+// 22.大端字节数组 转为 原生格式的整数
 void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes) {
     int i;
     vbi_clear(native, (num_bytes + (WORD_SIZE - 1)) / WORD_SIZE);
@@ -753,6 +752,7 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
     return !EccPoint_isZero(_public, curve);
 }
 
+// 08.曲线点有效验证
 int uECC_valid_point(const big *point, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
@@ -930,11 +930,8 @@ int curve_sign_with_k(const uint8_t *private_key, const uint8_t *message_hash, u
     return curve_sign_with_k_internal(private_key, message_hash, hash_size, k2, signature, curve);
 }
 
-int curve_sign(const uint8_t *private_key,
-              const uint8_t *message_hash,
-              unsigned hash_size,
-              uint8_t *signature,
-              Curve curve) {
+// 07.数字签名
+int curve_sign(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, uint8_t *signature, Curve curve) {
     big k[MAX_WORDS];
     big tries;
 
