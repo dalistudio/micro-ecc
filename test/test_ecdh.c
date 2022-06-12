@@ -20,23 +20,10 @@ int main() {
     uint8_t secret1[32] = {0};
     uint8_t secret2[32] = {0};
     
-    const struct uECC_Curve_t * curves[5];
+    const struct Curve_t * curves[5];
     int num_curves = 0;
-#if uECC_SUPPORTS_secp160r1
-    curves[num_curves++] = uECC_secp160r1();
-#endif
-#if uECC_SUPPORTS_secp192r1
-    curves[num_curves++] = uECC_secp192r1();
-#endif
-#if uECC_SUPPORTS_secp224r1
-    curves[num_curves++] = uECC_secp224r1();
-#endif
-#if uECC_SUPPORTS_secp256r1
-    curves[num_curves++] = uECC_secp256r1();
-#endif
-#if uECC_SUPPORTS_secp256k1
-    curves[num_curves++] = uECC_secp256k1();
-#endif
+
+    curves[num_curves++] = secp256k1();
     
     printf("Testing 256 random private key pairs\n");
 
@@ -45,18 +32,18 @@ int main() {
             printf(".");
             fflush(stdout);
 
-            if (!uECC_make_key(public1, private1, curves[c]) ||
-                !uECC_make_key(public2, private2, curves[c])) {
-                printf("uECC_make_key() failed\n");
+            if (!curve_make_key(public1, private1, curves[c]) ||
+                !curve_make_key(public2, private2, curves[c])) {
+                printf("curve_make_key() failed\n");
                 return 1;
             }
 
-            if (!uECC_shared_secret(public2, private1, secret1, curves[c])) {
+            if (!curve_shared_secret(public2, private1, secret1, curves[c])) {
                 printf("shared_secret() failed (1)\n");
                 return 1;
             }
 
-            if (!uECC_shared_secret(public1, private2, secret2, curves[c])) {
+            if (!curve_shared_secret(public1, private2, secret2, curves[c])) {
                 printf("shared_secret() failed (2)\n");
                 return 1;
             }

@@ -26,12 +26,12 @@ Test secp256k1_tests[] = {
     },
 };
 
-extern int uECC_sign_with_k(const uint8_t *private_key,
+extern int curve_sign_with_k(const uint8_t *private_key,
                             const uint8_t *message_hash,
                             unsigned hash_size,
                             const uint8_t *k,
                             uint8_t *signature,
-                            uECC_Curve curve);
+                            Curve curve);
 
 
 void vli_print(uint8_t *vli, unsigned int size) {
@@ -51,7 +51,7 @@ void strtobytes(const char* str, uint8_t* bytes, int count) {
   }
 }
 
-int run(Test* tests, int num_tests, uECC_Curve curve) {
+int run(Test* tests, int num_tests, Curve curve) {
     uint8_t private[32] = {0};
     uint8_t public[64] = {0};
     uint8_t k[32] = {0};
@@ -67,8 +67,8 @@ int run(Test* tests, int num_tests, uECC_Curve curve) {
     int public_key_size;
     int all_success = 1;
 
-    private_key_size = uECC_curve_private_key_size(curve);
-    public_key_size = uECC_curve_public_key_size(curve);
+    private_key_size = curve_private_key_size(curve);
+    public_key_size = curve_public_key_size(curve);
 
     for (i = 0; i < num_tests; ++i) {
         strtobytes(tests[i].private_key, private, private_key_size);
@@ -78,7 +78,7 @@ int run(Test* tests, int num_tests, uECC_Curve curve) {
         strtobytes(tests[i].r, r, private_key_size);
         strtobytes(tests[i].s, s, private_key_size);
 
-        result = uECC_sign_with_k(private, hash, private_key_size, k, signature, curve);
+        result = curve_sign_with_k(private, hash, private_key_size, k, signature, curve);
         if (!result) {
             all_success = 0;
             printf("  Sign failed for test %d\n", i);
@@ -101,7 +101,7 @@ int run(Test* tests, int num_tests, uECC_Curve curve) {
                 vli_print(signature + private_key_size, private_key_size);
             }
 
-            result = uECC_verify(public, hash, private_key_size, signature, curve);
+            result = curve_verify(public, hash, private_key_size, signature, curve);
             if (!result) {
                 printf("  Verify failed for test %d\n", i);
             }
@@ -113,16 +113,15 @@ int run(Test* tests, int num_tests, uECC_Curve curve) {
 
 #define RUN_TESTS(curve) \
     printf(#curve ":\n"); \
-    if (run(curve##_tests, sizeof(curve##_tests) / sizeof(curve##_tests[0]), uECC_##curve()) ) { \
+    if (run(curve##_tests, sizeof(curve##_tests) / sizeof(curve##_tests[0]), secp256k1()) ) { \
         printf("  All passed\n"); \
     } else { \
         printf("  Failed\n"); \
     }
 
 int main() {
-#if uECC_SUPPORTS_secp256k1
     RUN_TESTS(secp256k1)
-#endif
+
 
     return 0;
 }

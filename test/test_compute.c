@@ -22,23 +22,11 @@ int main() {
     
     int c;
     
-    const struct uECC_Curve_t * curves[5];
+    const struct Curve_t * curves[5];
     int num_curves = 0;
-#if uECC_SUPPORTS_secp160r1
-    curves[num_curves++] = uECC_secp160r1();
-#endif
-#if uECC_SUPPORTS_secp192r1
-    curves[num_curves++] = uECC_secp192r1();
-#endif
-#if uECC_SUPPORTS_secp224r1
-    curves[num_curves++] = uECC_secp224r1();
-#endif
-#if uECC_SUPPORTS_secp256r1
-    curves[num_curves++] = uECC_secp256r1();
-#endif
-#if uECC_SUPPORTS_secp256k1
-    curves[num_curves++] = uECC_secp256k1();
-#endif
+
+    curves[num_curves++] = secp256k1();
+
 
     printf("Testing 256 random private key pairs\n");
     for (c = 0; c < num_curves; ++c) {
@@ -49,13 +37,13 @@ int main() {
             memset(public, 0, sizeof(public));
             memset(public_computed, 0, sizeof(public_computed));
             
-            if (!uECC_make_key(public, private, curves[c])) {
-                printf("uECC_make_key() failed\n");
+            if (!curve_make_key(public, private, curves[c])) {
+                printf("curve_make_key() failed\n");
                 continue;
             }
 
-            if (!uECC_compute_public_key(private, public_computed, curves[c])) {
-                printf("uECC_compute_public_key() failed\n");
+            if (!curve_compute_public_key(private, public_computed, curves[c])) {
+                printf("curve_compute_public_key() failed\n");
             }
 
             if (memcmp(public, public_computed, sizeof(public)) != 0) {
@@ -70,9 +58,9 @@ int main() {
         printf("Testing private key = 0\n");
 
         memset(private, 0, sizeof(private));
-        success = uECC_compute_public_key(private, public_computed, curves[c]);
+        success = curve_compute_public_key(private, public_computed, curves[c]);
         if (success) {
-            printf("uECC_compute_public_key() should have failed\n");
+            printf("curve_compute_public_key() should have failed\n");
         }
         printf("\n");
     }
