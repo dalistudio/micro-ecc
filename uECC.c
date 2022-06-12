@@ -2,7 +2,6 @@
 
 #include "uECC.h"
 
-/* 兼容 POSIX 系统 */
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -56,9 +55,6 @@ void vbi_clear(big *vbi, count n) {
     }
 }
 
-/* Constant-time comparison to zero - secure way to compare long integers */
-/* Returns 1 if vbi == 0, 0 otherwise. */
-/* 是否为零 */
 big vbi_is_zero(const big *vbi, count n) {
     big bits = 0;
     count i;
@@ -68,24 +64,19 @@ big vbi_is_zero(const big *vbi, count n) {
     return (bits == 0);
 }
 
-/* 测试比特位 */
-/* Returns nonzero if bit 'bit' of vbi is set. */
 big vbi_test_bit(const big *vbi, bits bit) {
     return (vbi[bit >> WORD_BITS_SHIFT] & ((big)1 << (bit & WORD_BITS_MASK)));
 }
 
-/* Counts the number of words in vbi. */
+
 static count vbi_num_digits(const big *vbi, const count max_words) {
     count i;
-    /* Search from the end until we find a non-zero digit.
-       We do it in reverse because we expect that most digits will be nonzero. */
     for (i = max_words - 1; i >= 0 && vbi[i] == 0; --i) {
     }
 
     return (i + 1);
 }
 
-/* Counts the number of bits required to represent vbi. */
 bits vbi_num_bits(const big *vbi, const count max_words) {
     big i;
     big digit;
@@ -103,8 +94,6 @@ bits vbi_num_bits(const big *vbi, const count max_words) {
     return (((bits)(num_digits - 1) << WORD_BITS_SHIFT) + i);
 }
 
-/* Sets dest = src. */
-/* 大整数赋值 */
 void vbi_set(big *dest, const big *src, count n) {
     count i;
     for (i = 0; i < n; ++i) {
@@ -112,8 +101,6 @@ void vbi_set(big *dest, const big *src, count n) {
     }
 }
 
-/* Returns sign of left - right. */
-/* 不安全比较 */
 static cmp vbi_cmp_unsafe(const big *left, const big *right, count n) {
     count i;
     for (i = n - 1; i >= 0; --i) {
@@ -126,9 +113,6 @@ static cmp vbi_cmp_unsafe(const big *left, const big *right, count n) {
     return 0;
 }
 
-/* Constant-time comparison function - secure way to compare long integers */
-/* Returns one if left == right, zero otherwise. */
-/* 等于 */
 big vbi_equal(const big *left, const big *right, count n) {
     big diff = 0;
     count i;
@@ -138,10 +122,6 @@ big vbi_equal(const big *left, const big *right, count n) {
     return (diff == 0);
 }
 
-//big vbi_sub(big *result, const big *left, const big *right, count n);
-
-/* Returns sign of left - right, in constant time. */
-/* 比较 */
 cmp vbi_cmp(const big *left, const big *right, count n) {
     big tmp[MAX_WORDS];
     big neg = !!vbi_sub(tmp, left, right, n);
@@ -149,8 +129,6 @@ cmp vbi_cmp(const big *left, const big *right, count n) {
     return (!equal - 2 * neg);
 }
 
-/* Computes vbi = vbi >> 1. */
-/* 右移1位 */
 void vbi_rshift1(big *vbi, count n) {
     big *end = vbi;
     big carry = 0;
@@ -163,8 +141,6 @@ void vbi_rshift1(big *vbi, count n) {
     }
 }
 
-/* Computes result = left + right, returning carry. Can modify in place. */
-/* 加法 */
 big vbi_add(big *result, const big *left, const big *right, count n) {
     big carry = 0; /* 进位 */
     count i;
@@ -178,8 +154,6 @@ big vbi_add(big *result, const big *left, const big *right, count n) {
     return carry;
 }
 
-/* Computes result = left - right, returning borrow. Can modify in place. */
-/* 减法 */
 big vbi_sub(big *result, const big *left, const big *right, count n) {
     big borrow = 0; /* 借位 */
     count i;
@@ -193,7 +167,6 @@ big vbi_sub(big *result, const big *left, const big *right, count n) {
     return borrow;
 }
 
-/* 乘加 */
 static void muladd(big a, big b, big *r0, big *r1, big *r2) {
     big2 p = (big2)a * b;
     big2 r01 = ((big2)(*r1) << WORD_BITS) | *r0;
@@ -203,14 +176,12 @@ static void muladd(big a, big b, big *r0, big *r1, big *r2) {
     *r0 = (big)r01;
 }
 
-/* 乘法 */
 void vbi_mul(big *result, const big *left, const big *right, count n) {
     big r0 = 0;
     big r1 = 0;
     big r2 = 0;
     count i, k;
 
-    /* Compute each digit of result in sequence, maintaining the carries. */
     for (k = 0; k < n; ++k) {
         for (i = 0; i <= k; ++i) {
             muladd(left[i], right[k - i], &r0, &r1, &r2);
@@ -232,39 +203,26 @@ void vbi_mul(big *result, const big *left, const big *right, count n) {
     result[n * 2 - 1] = r0;
 }
 
-/* Computes result = (left + right) % mod.
-   Assumes that left < mod and right < mod, and that result does not overlap mod. */
-/* 相加求模 */
 void vbi_mod_add(big *result, const big *left, const big *right, const big *mod, count n) {
     big carry = vbi_add(result, left, right, n);
     if (carry || vbi_cmp_unsafe(mod, result, n) != 1) {
-        /* result > mod (result = mod + remainder), so subtract mod to get remainder. */
         vbi_sub(result, result, mod, n);
     }
 }
 
-/* Computes result = (left - right) % mod.
-   Assumes that left < mod and right < mod, and that result does not overlap mod. */
-/* 相减求模 */
 void vbi_mod_sub(big *result, const big *left, const big *right, const big *mod, count n) {
     big l_borrow = vbi_sub(result, left, right, n);
     if (l_borrow) {
-        /* In this case, result == -diff == (max int) - diff. Since -x % d == d - x,
-           we can get the correct result from result + mod (with overflow). */
         vbi_add(result, result, mod, n);
     }
 }
 
-/* Computes result = product % mod, where product is 2N words long. */
-/* Currently only designed to work for curve_p or curve_n. */
-/* 求模 */
 void vbi_mmod(big *result, big *product, const big *mod, count n) {
     big mod_multiple[2 * MAX_WORDS];
     big tmp[2 * MAX_WORDS];
     big *v[2] = {tmp, product};
     big index;
 
-    /* Shift mod so its highest set bit is at the maximum position. */
     bits shift = (n * 2 * WORD_BITS) - vbi_num_bits(mod, n);
     count word_shift = shift / WORD_BITS;
     count bit_shift = shift % WORD_BITS;
@@ -289,7 +247,7 @@ void vbi_mmod(big *result, big *product, const big *mod, count n) {
             }
             v[1 - index][i] = diff;
         }
-        index = !(index ^ borrow); /* Swap the index if there was no borrow */
+        index = !(index ^ borrow);
         vbi_rshift1(mod_multiple, n);
         mod_multiple[n - 1] |= mod_multiple[n] << (WORD_BITS - 1);
         vbi_rshift1(mod_multiple + n, n);
@@ -297,15 +255,12 @@ void vbi_mmod(big *result, big *product, const big *mod, count n) {
     vbi_set(result, v[index], n);
 }
 
-/* Computes result = (left * right) % mod. */
-/* 相乘求模 */
 void vbi_mod_mul(big *result, const big *left, const big *right, const big *mod, count n) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, n);
     vbi_mmod(result, product, mod, n);
 }
 
-/* 曲线相乘求模 */
 void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve) {
     big product[2 * MAX_WORDS];
     vbi_mul(product, left, right, curve->word);
@@ -314,14 +269,10 @@ void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curv
 
 }
 
-/* 曲线平方求模 */
 void vbi_mod_square_fast(big *result, const big *left, Curve curve) {
     vbi_mod_mul_fast(result, left, left, curve);
 }
 
-
-
-/* 取反求模 更新 */
 #define EVEN(vbi) (!(vbi[0] & 1))
 static void vbi_mod_inv_update(big *uv, const big *mod, count n) {
     big carry = 0;
@@ -334,9 +285,6 @@ static void vbi_mod_inv_update(big *uv, const big *mod, count n) {
     }
 }
 
-/* Computes result = (1 / input) % mod. All VLIs are the same size.
-   See "From Euclid's GCD to Montgomery Multiplication to the Great Divide" */
-/* 取反求模 */
 void vbi_mod_inv(big *result, const big *input, const big *mod, count n) {
     big a[MAX_WORDS], b[MAX_WORDS], u[MAX_WORDS], v[MAX_WORDS];
     cmp cmpResult;
@@ -380,12 +328,10 @@ void vbi_mod_inv(big *result, const big *input, const big *mod, count n) {
 }
 
 /* ------ Point operations ------ */
-/* ------ 点操作 ------*/
-
 static const struct Curve_t curve_secp256k1 = {
     secp256k1_words,
     secp256k1_bytes,
-    256, /* num_n_bits */
+    256,
     { BYTES_TO_WORDS_8(2F, FC, FF, FF, FE, FF, FF, FF),
         BYTES_TO_WORDS_8(FF, FF, FF, FF, FF, FF, FF, FF),
         BYTES_TO_WORDS_8(FF, FF, FF, FF, FF, FF, FF, FF),
@@ -410,7 +356,6 @@ static const struct Curve_t curve_secp256k1 = {
     &double_jacobian_secp256k1,
     &x_side_secp256k1,
     &vbi_mmod_fast_secp256k1
-
 };
 
 Curve secp256k1(void) { return &curve_secp256k1; }
@@ -458,8 +403,6 @@ static void x_side_secp256k1(big *result, const big *x, Curve curve) {
     vbi_mod_add(result, result, curve->b, curve->p, secp256k1_words); /* r = x^3 + b */
 }
 
-
-//static void omega_mult_secp256k1(big *result, const big *right);
 static void vbi_mmod_fast_secp256k1(big *result, big *product) {
     big tmp[2 * secp256k1_words];
     big carry;
@@ -655,8 +598,6 @@ static big regularize_k(const big * const k, big *k0, big *k1, Curve curve) {
     return carry;
 }
 
-/* Generates a random integer in the range 0 < random < top.
-   Both random and top have n words. */
 int generate_random_int(big *random, const big *top, count n) {
     big mask = (big)-1;
     big tries;
@@ -686,12 +627,8 @@ static big EccPoint_compute_public_key(big *result, big *private_key, Curve curv
     big *initial_Z = 0;
     big carry;
 
-    /* Regularize the bitcount for the private key so that attackers cannot use a side channel
-       attack to learn the number of leading zeros. */
     carry = regularize_k(private_key, tmp1, tmp2, curve);
 
-    /* If an RNG function was specified, try to get a random initial Z value to improve
-       protection against side-channel attacks. */
     if (g_rng_function) {
         if (!generate_random_int(p2[carry], curve->p, curve->word)) {
             return 0;
@@ -725,9 +662,6 @@ void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes) {
     }
 }
 
-
-
-/* 生成公钥和私钥 */
 int curve_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
 
     big _private[MAX_WORDS];
@@ -753,7 +687,6 @@ int curve_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
     return 0;
 }
 
-/* 共享密钥 */
 int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, Curve curve) {
     big _public[MAX_WORDS * 2];
     big _private[MAX_WORDS];
@@ -770,13 +703,8 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
     vbi_bytes_native(_public, public_key, num_bytes);
     vbi_bytes_native(_public + n, public_key + num_bytes, num_bytes);
 
-
-    /* Regularize the bitcount for the private key so that attackers cannot use a side channel
-       attack to learn the number of leading zeros. */
     carry = regularize_k(_private, _private, tmp, curve);
 
-    /* If an RNG function was specified, try to get a random initial Z value to improve
-       protection against side-channel attacks. */
     if (g_rng_function) {
         if (!generate_random_int(p2[carry], curve->p, n)) {
             return 0;
@@ -791,7 +719,6 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
     return !EccPoint_isZero(_public, curve);
 }
 
-/* 有效的点 */
 int uECC_valid_point(const big *point, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
@@ -815,12 +742,9 @@ int uECC_valid_point(const big *point, Curve curve) {
     return (int)(vbi_equal(tmp1, tmp2, n));
 }
 
-/* 有效的公钥 */
 int curve_valid_public_key(const uint8_t *public_key, Curve curve) {
 
     big _public[MAX_WORDS * 2];
-
-
 
     vbi_bytes_native(_public, public_key, curve->byte);
     vbi_bytes_native(
@@ -829,16 +753,12 @@ int curve_valid_public_key(const uint8_t *public_key, Curve curve) {
     return uECC_valid_point(_public, curve);
 }
 
-/* 计算公钥 */
 int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Curve curve) {
 
     big _private[MAX_WORDS];
     big _public[MAX_WORDS * 2];
 
-
-
     vbi_bytes_native(_private, private_key, BITS_TO_BYTES(curve->bit));
-
 
     /* Make sure the private key is in the range [1, n-1]. */
     if (vbi_is_zero(_private, BITS_TO_WORDS(curve->bit))) {
@@ -854,7 +774,6 @@ int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Cu
         return 0;
     }
 
-
     vbi_native_bytes(public_key, curve->byte, _public);
     vbi_native_bytes(
         public_key + curve->byte, curve->byte, _public + curve->word);
@@ -865,7 +784,6 @@ int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Cu
 
 /* -------- ECDSA code -------- */
 
-/* 比特转整数 */
 static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, Curve curve) {
     unsigned num_n_bytes = BITS_TO_BYTES(curve->bit);
     unsigned num_n_words = BITS_TO_WORDS(curve->bit);
@@ -899,7 +817,6 @@ static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, Curve
     }
 }
 
-/* 用内部k签名 */
 static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, big *k, uint8_t *signature, Curve curve) {
 
     big tmp[MAX_WORDS];
@@ -970,15 +887,12 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
     return 1;
 }
 
-/* For testing - sign with an explicitly specified k value */
-/* 用k签名 */
 int curve_sign_with_k(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *k, uint8_t *signature, Curve curve) {
     big k2[MAX_WORDS];
     bits2int(k2, k, BITS_TO_BYTES(curve->bit), curve);
     return curve_sign_with_k_internal(private_key, message_hash, hash_size, k2, signature, curve);
 }
 
-/* 签名 */
 int curve_sign(const uint8_t *private_key,
               const uint8_t *message_hash,
               unsigned hash_size,
@@ -1003,7 +917,6 @@ static bits smax(bits a, bits b) {
     return (a > b ? a : b);
 }
 
-/* 验证 */
 int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, Curve curve) {
     big u1[MAX_WORDS], u2[MAX_WORDS];
     big z[MAX_WORDS];
@@ -1028,12 +941,10 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
     r[num_n_words - 1] = 0;
     s[num_n_words - 1] = 0;
 
-
     vbi_bytes_native(_public, public_key, curve->byte);
     vbi_bytes_native(_public + n, public_key + curve->byte, curve->byte);
     vbi_bytes_native(r, signature, curve->byte);
     vbi_bytes_native(s, signature + curve->byte, curve->byte);
-
 
     /* r, s must not be 0. */
     if (vbi_is_zero(r, n) || vbi_is_zero(s, n)) {
