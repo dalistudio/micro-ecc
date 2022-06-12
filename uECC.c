@@ -14,12 +14,12 @@
 #define BITS_TO_BYTES(num_bits) ((num_bits + 7) / 8)
 
 struct Curve_t {
-    count num_words;
-    count num_bytes;
-    bits num_n_bits;
+    count word;
+    count byte;
+    bits bit;
     big p[MAX_WORDS];
     big n[MAX_WORDS];
-    big G[MAX_WORDS * 2];
+    big g[MAX_WORDS * 2];
     big b[MAX_WORDS];
     void (*double_jacobian)(big * X1, big * Y1, big * Z1, Curve curve);
     void (*x_side)(big *result, const big *x, Curve curve);
@@ -37,11 +37,11 @@ RNG_Function curve_get_rng(void) {
 }
 
 int curve_private_key_size(Curve curve) {
-    return BITS_TO_BYTES(curve->num_n_bits);
+    return BITS_TO_BYTES(curve->bit);
 }
 
 int curve_public_key_size(Curve curve) {
-    return 2 * curve->num_bytes;
+    return 2 * curve->byte;
 }
 
 vbi_API void vbi_clear(big *vbi, count n) {
@@ -315,7 +315,7 @@ vbi_API void vbi_mod_mul(big *result, const big *left, const big *right, const b
 /* 曲线相乘求模 */
 vbi_API void vbi_mod_mul_fast(big *result, const big *left, const big *right, Curve curve) {
     big product[2 * MAX_WORDS];
-    vbi_mul(product, left, right, curve->num_words);
+    vbi_mul(product, left, right, curve->word);
 
     curve->mmod_fast(result, product);
 
@@ -392,7 +392,7 @@ vbi_API void vbi_mod_inv(big *result, const big *input, const big *mod, count n)
 #include "curve-specific.h"
 
 /* Returns 1 if 'point' is the point at infinity, 0 otherwise. */
-#define EccPoint_isZero(point, curve) vbi_is_zero((point), (curve)->num_words * 2)
+#define EccPoint_isZero(point, curve) vbi_is_zero((point), (curve)->word * 2)
 
 /* Point multiplication algorithm using Montgomery's ladder with co-Z coordinates.
    点乘算法使用 co-Z坐标的蒙哥马利阶梯
@@ -415,7 +415,7 @@ static void apply_z(big * X1,
 /* P = (x1, y1) => 2P, (x2, y2) => P' */
 static void XYcZ_initial_double(big * X1, big * Y1, big * X2, big * Y2, const big * const initial_Z, Curve curve) {
     big z[MAX_WORDS];
-    count n = curve->num_words;
+    count n = curve->word;
     if (initial_Z) {
         vbi_set(z, initial_Z, n);
     } else {
@@ -438,7 +438,7 @@ static void XYcZ_initial_double(big * X1, big * Y1, big * X2, big * Y2, const bi
 static void XYcZ_add(big * X1, big * Y1, big * X2, big * Y2, Curve curve) {
     /* t1 = X1, t2 = Y1, t3 = X2, t4 = Y2 */
     big t5[MAX_WORDS];
-    count n = curve->num_words;
+    count n = curve->word;
 
     vbi_mod_sub(t5, X2, X1, curve->p, n); /* t5 = x2 - x1 */
     vbi_mod_square_fast(t5, t5, curve);                  /* t5 = (x2 - x1)^2 = A */
@@ -467,7 +467,7 @@ static void XYcZ_addC(big * X1, big * Y1, big * X2, big * Y2, Curve curve) {
     big t5[MAX_WORDS];
     big t6[MAX_WORDS];
     big t7[MAX_WORDS];
-    count n = curve->num_words;
+    count n = curve->word;
 
     vbi_mod_sub(t5, X2, X1, curve->p, n); /* t5 = x2 - x1 */
     vbi_mod_square_fast(t5, t5, curve);                  /* t5 = (x2 - x1)^2 = A */
@@ -503,7 +503,7 @@ static void EccPoint_mult(big * result, const big * point, const big * scalar, c
     big z[MAX_WORDS];
     bits i;
     big nb;
-    count n = curve->num_words;
+    count n = curve->word;
 
     vbi_set(Rx[1], point, n);
     vbi_set(Ry[1], point + n, n);
@@ -537,8 +537,8 @@ static void EccPoint_mult(big * result, const big * point, const big * scalar, c
 }
 
 static big regularize_k(const big * const k, big *k0, big *k1, Curve curve) {
-    count num_n_words = BITS_TO_WORDS(curve->num_n_bits);
-    bits num_n_bits = curve->num_n_bits;
+    count num_n_words = BITS_TO_WORDS(curve->bit);
+    bits num_n_bits = curve->bit;
     big carry = vbi_add(k0, k, curve->n, num_n_words) ||
         (num_n_bits < ((bits)num_n_words * WORD_SIZE * 8) &&
          vbi_test_bit(k0, num_n_bits));
@@ -584,12 +584,12 @@ static big EccPoint_compute_public_key(big *result, big *private_key, Curve curv
     /* If an RNG function was specified, try to get a random initial Z value to improve
        protection against side-channel attacks. */
     if (g_rng_function) {
-        if (!generate_random_int(p2[carry], curve->p, curve->num_words)) {
+        if (!generate_random_int(p2[carry], curve->p, curve->word)) {
             return 0;
         }
         initial_Z = p2[carry];
     }
-    EccPoint_mult(result, curve->G, p2[!carry], initial_Z, curve->num_n_bits + 1, curve);
+    EccPoint_mult(result, curve->g, p2[!carry], initial_Z, curve->bit + 1, curve);
 
     if (EccPoint_isZero(result, curve)) {
         return 0;
@@ -627,16 +627,16 @@ int curve_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
     big tries;
 
     for (tries = 0; tries < RNG_MAX_TRIES; ++tries) {
-        if (!generate_random_int(_private, curve->n, BITS_TO_WORDS(curve->num_n_bits))) {
+        if (!generate_random_int(_private, curve->n, BITS_TO_WORDS(curve->bit))) {
             return 0;
         }
 
         if (EccPoint_compute_public_key(_public, _private, curve)) {
 
-            vbi_native_bytes(private_key, BITS_TO_BYTES(curve->num_n_bits), _private);
-            vbi_native_bytes(public_key, curve->num_bytes, _public);
+            vbi_native_bytes(private_key, BITS_TO_BYTES(curve->bit), _private);
+            vbi_native_bytes(public_key, curve->byte, _public);
             vbi_native_bytes(
-                public_key + curve->num_bytes, curve->num_bytes, _public + curve->num_words);
+                public_key + curve->byte, curve->byte, _public + curve->word);
 
             return 1;
         }
@@ -653,11 +653,11 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
     big *p2[2] = {_private, tmp};
     big *initial_Z = 0;
     big carry;
-    count n = curve->num_words;
-    count num_bytes = curve->num_bytes;
+    count n = curve->word;
+    count num_bytes = curve->byte;
 
 
-    vbi_bytes_native(_private, private_key, BITS_TO_BYTES(curve->num_n_bits));
+    vbi_bytes_native(_private, private_key, BITS_TO_BYTES(curve->bit));
     vbi_bytes_native(_public, public_key, num_bytes);
     vbi_bytes_native(_public + n, public_key + num_bytes, num_bytes);
 
@@ -675,7 +675,7 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
         initial_Z = p2[carry];
     }
 
-    EccPoint_mult(_public, _public, p2[!carry], initial_Z, curve->num_n_bits + 1, curve);
+    EccPoint_mult(_public, _public, p2[!carry], initial_Z, curve->bit + 1, curve);
 
     vbi_native_bytes(secret, num_bytes, _public);
 
@@ -686,7 +686,7 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
 vbi_API int uECC_valid_point(const big *point, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
-    count n = curve->num_words;
+    count n = curve->word;
 
     /* The point at infinity is invalid. */
     if (EccPoint_isZero(point, curve)) {
@@ -713,9 +713,9 @@ int curve_valid_public_key(const uint8_t *public_key, Curve curve) {
 
 
 
-    vbi_bytes_native(_public, public_key, curve->num_bytes);
+    vbi_bytes_native(_public, public_key, curve->byte);
     vbi_bytes_native(
-        _public + curve->num_words, public_key + curve->num_bytes, curve->num_bytes);
+        _public + curve->word, public_key + curve->byte, curve->byte);
 
     return uECC_valid_point(_public, curve);
 }
@@ -728,15 +728,15 @@ int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Cu
 
 
 
-    vbi_bytes_native(_private, private_key, BITS_TO_BYTES(curve->num_n_bits));
+    vbi_bytes_native(_private, private_key, BITS_TO_BYTES(curve->bit));
 
 
     /* Make sure the private key is in the range [1, n-1]. */
-    if (vbi_is_zero(_private, BITS_TO_WORDS(curve->num_n_bits))) {
+    if (vbi_is_zero(_private, BITS_TO_WORDS(curve->bit))) {
         return 0;
     }
 
-    if (vbi_cmp(curve->n, _private, BITS_TO_WORDS(curve->num_n_bits)) != 1) {
+    if (vbi_cmp(curve->n, _private, BITS_TO_WORDS(curve->bit)) != 1) {
         return 0;
     }
 
@@ -746,9 +746,9 @@ int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Cu
     }
 
 
-    vbi_native_bytes(public_key, curve->num_bytes, _public);
+    vbi_native_bytes(public_key, curve->byte, _public);
     vbi_native_bytes(
-        public_key + curve->num_bytes, curve->num_bytes, _public + curve->num_words);
+        public_key + curve->byte, curve->byte, _public + curve->word);
 
     return 1;
 }
@@ -758,8 +758,8 @@ int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Cu
 
 /* 比特转整数 */
 static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, Curve curve) {
-    unsigned num_n_bytes = BITS_TO_BYTES(curve->num_n_bits);
-    unsigned num_n_words = BITS_TO_WORDS(curve->num_n_bits);
+    unsigned num_n_bytes = BITS_TO_BYTES(curve->bit);
+    unsigned num_n_words = BITS_TO_WORDS(curve->bit);
     int shift;
     big carry;
     big *ptr;
@@ -772,10 +772,10 @@ static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, Curve
 
     vbi_bytes_native(native, bits, bits_size);
 
-    if (bits_size * 8 <= (unsigned)curve->num_n_bits) {
+    if (bits_size * 8 <= (unsigned)curve->bit) {
         return;
     }
-    shift = bits_size * 8 - curve->num_n_bits;
+    shift = bits_size * 8 - curve->bit;
     carry = 0;
     ptr = native + num_n_words;
     while (ptr-- > native) {
@@ -801,9 +801,9 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
     big p[MAX_WORDS * 2];
 
     big carry;
-    count n = curve->num_words;
-    count num_n_words = BITS_TO_WORDS(curve->num_n_bits);
-    bits num_n_bits = curve->num_n_bits;
+    count n = curve->word;
+    count num_n_words = BITS_TO_WORDS(curve->bit);
+    bits num_n_bits = curve->bit;
 
     /* Make sure 0 < k < curve_n */
     if (vbi_is_zero(k, n) || vbi_cmp(curve->n, k, num_n_words) != 1) {
@@ -819,7 +819,7 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
         }
         initial_Z = k2[carry];
     }
-    EccPoint_mult(p, curve->G, k2[!carry], initial_Z, num_n_bits + 1, curve);
+    EccPoint_mult(p, curve->g, k2[!carry], initial_Z, num_n_bits + 1, curve);
     if (vbi_is_zero(p, n)) {
         return 0;
     }
@@ -840,9 +840,9 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
     vbi_mod_mul(k, k, tmp, curve->n, num_n_words); /* k = 1 / k */
 
 
-    vbi_native_bytes(signature, curve->num_bytes, p); /* store r */
+    vbi_native_bytes(signature, curve->byte, p); /* store r */
 
-    vbi_bytes_native(tmp, private_key, BITS_TO_BYTES(curve->num_n_bits)); /* tmp = d */
+    vbi_bytes_native(tmp, private_key, BITS_TO_BYTES(curve->bit)); /* tmp = d */
 
 
     s[num_n_words - 1] = 0;
@@ -852,11 +852,11 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
     bits2int(tmp, message_hash, hash_size, curve);
     vbi_mod_add(s, tmp, s, curve->n, num_n_words); /* s = e + r*d */
     vbi_mod_mul(s, s, k, curve->n, num_n_words);  /* s = (e + r*d) / k */
-    if (vbi_num_bits(s, num_n_words) > (bits)curve->num_bytes * 8) {
+    if (vbi_num_bits(s, num_n_words) > (bits)curve->byte * 8) {
         return 0;
     }
 
-    vbi_native_bytes(signature + curve->num_bytes, curve->num_bytes, s);
+    vbi_native_bytes(signature + curve->byte, curve->byte, s);
 
     return 1;
 }
@@ -865,7 +865,7 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
 /* 用k签名 */
 int curve_sign_with_k(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *k, uint8_t *signature, Curve curve) {
     big k2[MAX_WORDS];
-    bits2int(k2, k, BITS_TO_BYTES(curve->num_n_bits), curve);
+    bits2int(k2, k, BITS_TO_BYTES(curve->bit), curve);
     return curve_sign_with_k_internal(private_key, message_hash, hash_size, k2, signature, curve);
 }
 
@@ -879,7 +879,7 @@ int curve_sign(const uint8_t *private_key,
     big tries;
 
     for (tries = 0; tries < RNG_MAX_TRIES; ++tries) {
-        if (!generate_random_int(k, curve->n, BITS_TO_WORDS(curve->num_n_bits))) {
+        if (!generate_random_int(k, curve->n, BITS_TO_WORDS(curve->bit))) {
             return 0;
         }
 
@@ -912,18 +912,18 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
     big _public[MAX_WORDS * 2];
 
     big r[MAX_WORDS], s[MAX_WORDS];
-    count n = curve->num_words;
-    count num_n_words = BITS_TO_WORDS(curve->num_n_bits);
+    count n = curve->word;
+    count num_n_words = BITS_TO_WORDS(curve->bit);
 
     rx[num_n_words - 1] = 0;
     r[num_n_words - 1] = 0;
     s[num_n_words - 1] = 0;
 
 
-    vbi_bytes_native(_public, public_key, curve->num_bytes);
-    vbi_bytes_native(_public + n, public_key + curve->num_bytes, curve->num_bytes);
-    vbi_bytes_native(r, signature, curve->num_bytes);
-    vbi_bytes_native(s, signature + curve->num_bytes, curve->num_bytes);
+    vbi_bytes_native(_public, public_key, curve->byte);
+    vbi_bytes_native(_public + n, public_key + curve->byte, curve->byte);
+    vbi_bytes_native(r, signature, curve->byte);
+    vbi_bytes_native(s, signature + curve->byte, curve->byte);
 
 
     /* r, s must not be 0. */
@@ -947,8 +947,8 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
     /* Calculate sum = G + Q. */
     vbi_set(sum, _public, n);
     vbi_set(sum + n, _public + n, n);
-    vbi_set(tx, curve->G, n);
-    vbi_set(ty, curve->G + n, n);
+    vbi_set(tx, curve->g, n);
+    vbi_set(ty, curve->g + n, n);
     vbi_mod_sub(z, sum, tx, curve->p, n); /* z = x2 - x1 */
     XYcZ_add(tx, ty, sum, sum + n, curve);
     vbi_mod_inv(z, z, curve->p, n); /* z = 1/z */
@@ -956,7 +956,7 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
 
     /* Use Shamir's trick to calculate u1*G + u2*Q */
     points[0] = 0;
-    points[1] = curve->G;
+    points[1] = curve->g;
     points[2] = _public;
     points[3] = sum;
     num_bits = smax(vbi_num_bits(u1, num_n_words),
