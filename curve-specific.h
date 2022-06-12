@@ -4,7 +4,6 @@
 #define _UECC_CURVE_SPECIFIC_H_
 
 #define secp256k1_bytes 32
-
 #define secp256k1_words 8
 
 #define BYTES_TO_WORDS_8(a, b, c, d, e, f, g, h) 0x##d##c##b##a, 0x##h##g##f##e
@@ -48,7 +47,6 @@ static const struct Curve_t curve_secp256k1 = {
 };
 
 Curve secp256k1(void) { return &curve_secp256k1; }
-
 
 /* Double in place */
 static void double_jacobian_secp256k1(big * X1, big * Y1, big * Z1, Curve curve) {

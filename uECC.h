@@ -15,25 +15,25 @@ Curve secp256k1(void);
 RNG函数应该将“size”随机字节填充到“dest”中。如果“dest”中填充了随机数据，则返回1；
 如果无法生成随机数据，则返回0。填写的值应该是真正随机的，或者来自加密安全的PRNG。
 
-在调用curve_make_key()或curve_sign()之前，必须设置正常运行的RNG函数（使用uECC_set_rng() ）。
+在调用curve_make_key()或curve_sign()之前，必须设置正常运行的RNG函数（使用curve_set_rng() ）。
 
 设置功能正常的RNG函数可以提高curve_shared_secret()和curve_sign_deterministic()对侧通道攻击的抵抗力。
 */
 typedef int (*RNG_Function)(uint8_t *dest, unsigned size);
 
-/* 01、uECC_set_rng() function.
+/* 01、curve_set_rng() function.
 设置将用于生成随机字节的函数。如果生成了随机数据，RNG函数应返回1；如果无法生成随机数据，RNG函数应返回0。
 在没有预定义RNG函数的平台上（例如嵌入式平台），必须在使用curve_make_key()或curve_sign()之前调用该函数。
 
 Inputs:
     rng_function - 用于生成随机字节的函数。
 */
-void uECC_set_rng(RNG_Function rng_function);
+void curve_set_rng(RNG_Function rng_function);
 
-/* 02、uECC_get_rng() function.
+/* 02、curve_get_rng() function.
 生成将用于生成随机返回的函数字节。
 */
-RNG_Function uECC_get_rng(void);
+RNG_Function curve_get_rng(void);
 
 /* 03、curve_private_key_size() function.
 返回曲线的私钥大小（字节）
@@ -113,38 +113,6 @@ Outputs:
 如果成功生成签名，则返回1；如果发生错误，则返回0。
 */
 int curve_sign(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, uint8_t *signature, Curve curve);
-
-/* uECC_HashContext structure.
-这用于将任意哈希函数传递给curve_sign_deterministic()。该结构将用于多个散列计算；每次计算新的哈希时，都会调用init_hash()，
-然后调用一个或多个update_hash()的调用，最后调用finish_hash()生成结果哈希。
-
-*/
-typedef struct uECC_HashContext {
-    void (*init_hash)(const struct uECC_HashContext *context);
-    void (*update_hash)(const struct uECC_HashContext *context, const uint8_t *message, unsigned message_size);
-    void (*finish_hash)(const struct uECC_HashContext *context, uint8_t *hash_result);
-    unsigned block_size; /* Hash function block size in bytes, eg 64 for SHA-256. */
-    unsigned result_size; /* Hash function result size in bytes, eg 32 for SHA-256. */
-    uint8_t *tmp; /* Must point to a buffer of at least (2 * result_size + block_size) bytes. */
-} uECC_HashContext;
-
-/* 12、curve_sign_deterministic() function.
-使用确定性算法为给定哈希值生成ECDSA签名（请参阅RFC 6979）。在调用此函数之前，不需要使用uECC_set_rng()设置RNG；然而，如果定义了RNG，它将提高对侧通道攻击的抵抗力。
-
-用法：计算要签名的数据的散列（建议使用SHA-2），并将其与私钥和散列上下文一起传递给此函数。请注意，不需要使用hash_context使用的相同哈希函数来计算消息_哈希。
-
-Inputs:
-    private_key  - 你的私钥。
-    message_hash - 要签名的消息的散列。
-    hash_size    - message_hash消息的大小（字节）
-    hash_context - 要使用的哈希上下文。
-
-Outputs:
-    signature - 将用签名值填充。
-
-如果成功生成签名，则返回1；如果发生错误，则返回0。
-*/
-int curve_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, Curve curve);
 
 /* 13、curve_verify() function.
 验证ECDSA签名。

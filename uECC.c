@@ -26,13 +26,13 @@ struct Curve_t {
     void (*mmod_fast)(big *result, big *product);
 };
 
-static cmp vbi_cmp_unsafe(const big *left, const big *right, count num_words);
+static cmp vbi_cmp_unsafe(const big *left, const big *right, count n);
 static RNG_Function g_rng_function = &default_RNG;
-void uECC_set_rng(RNG_Function rng_function) {
+void curve_set_rng(RNG_Function rng_function) {
     g_rng_function = rng_function;
 }
 
-RNG_Function uECC_get_rng(void) {
+RNG_Function curve_get_rng(void) {
     return g_rng_function;
 }
 
@@ -44,55 +44,53 @@ int curve_public_key_size(Curve curve) {
     return 2 * curve->num_bytes;
 }
 
-#if !asm_clear
-vbi_API void vbi_clear(big *vli, count num_words) {
+vbi_API void vbi_clear(big *vbi, count n) {
     count i;
-    for (i = 0; i < num_words; ++i) {
-        vli[i] = 0;
+    for (i = 0; i < n; ++i) {
+        vbi[i] = 0;
     }
 }
-#endif /* !asm_clear */
 
 /* Constant-time comparison to zero - secure way to compare long integers */
-/* Returns 1 if vli == 0, 0 otherwise. */
+/* Returns 1 if vbi == 0, 0 otherwise. */
 /* 是否为零 */
-vbi_API big vbi_is_zero(const big *vli, count num_words) {
+vbi_API big vbi_is_zero(const big *vbi, count n) {
     big bits = 0;
     count i;
-    for (i = 0; i < num_words; ++i) {
-        bits |= vli[i];
+    for (i = 0; i < n; ++i) {
+        bits |= vbi[i];
     }
     return (bits == 0);
 }
 
 /* 测试比特位 */
-/* Returns nonzero if bit 'bit' of vli is set. */
-vbi_API big vbi_test_bit(const big *vli, bits bit) {
-    return (vli[bit >> WORD_BITS_SHIFT] & ((big)1 << (bit & WORD_BITS_MASK)));
+/* Returns nonzero if bit 'bit' of vbi is set. */
+vbi_API big vbi_test_bit(const big *vbi, bits bit) {
+    return (vbi[bit >> WORD_BITS_SHIFT] & ((big)1 << (bit & WORD_BITS_MASK)));
 }
 
-/* Counts the number of words in vli. */
-static count vli_num_digits(const big *vli, const count max_words) {
+/* Counts the number of words in vbi. */
+static count vbi_num_digits(const big *vbi, const count max_words) {
     count i;
     /* Search from the end until we find a non-zero digit.
        We do it in reverse because we expect that most digits will be nonzero. */
-    for (i = max_words - 1; i >= 0 && vli[i] == 0; --i) {
+    for (i = max_words - 1; i >= 0 && vbi[i] == 0; --i) {
     }
 
     return (i + 1);
 }
 
-/* Counts the number of bits required to represent vli. */
-vbi_API bits vbi_num_bits(const big *vli, const count max_words) {
+/* Counts the number of bits required to represent vbi. */
+vbi_API bits vbi_num_bits(const big *vbi, const count max_words) {
     big i;
     big digit;
 
-    count num_digits = vli_num_digits(vli, max_words);
+    count num_digits = vbi_num_digits(vbi, max_words);
     if (num_digits == 0) {
         return 0;
     }
 
-    digit = vli[num_digits - 1];
+    digit = vbi[num_digits - 1];
     for (i = 0; digit; ++i) {
         digit >>= 1;
     }
@@ -103,9 +101,9 @@ vbi_API bits vbi_num_bits(const big *vli, const count max_words) {
 /* Sets dest = src. */
 /* 大整数赋值 */
 #if !asm_set
-vbi_API void vbi_set(big *dest, const big *src, count num_words) {
+vbi_API void vbi_set(big *dest, const big *src, count n) {
     count i;
-    for (i = 0; i < num_words; ++i) {
+    for (i = 0; i < n; ++i) {
         dest[i] = src[i];
     }
 }
@@ -113,9 +111,9 @@ vbi_API void vbi_set(big *dest, const big *src, count num_words) {
 
 /* Returns sign of left - right. */
 /* 不安全比较 */
-static cmp vbi_cmp_unsafe(const big *left, const big *right, count num_words) {
+static cmp vbi_cmp_unsafe(const big *left, const big *right, count n) {
     count i;
-    for (i = num_words - 1; i >= 0; --i) {
+    for (i = n - 1; i >= 0; --i) {
         if (left[i] > right[i]) {
             return 1;
         } else if (left[i] < right[i]) {
@@ -128,37 +126,37 @@ static cmp vbi_cmp_unsafe(const big *left, const big *right, count num_words) {
 /* Constant-time comparison function - secure way to compare long integers */
 /* Returns one if left == right, zero otherwise. */
 /* 等于 */
-vbi_API big vbi_equal(const big *left, const big *right, count num_words) {
+vbi_API big vbi_equal(const big *left, const big *right, count n) {
     big diff = 0;
     count i;
-    for (i = num_words - 1; i >= 0; --i) {
+    for (i = n - 1; i >= 0; --i) {
         diff |= (left[i] ^ right[i]);
     }
     return (diff == 0);
 }
 
-vbi_API big vbi_sub(big *result, const big *left, const big *right, count num_words);
+vbi_API big vbi_sub(big *result, const big *left, const big *right, count n);
 
 /* Returns sign of left - right, in constant time. */
 /* 比较 */
-vbi_API cmp vbi_cmp(const big *left, const big *right, count num_words) {
+vbi_API cmp vbi_cmp(const big *left, const big *right, count n) {
     big tmp[MAX_WORDS];
-    big neg = !!vbi_sub(tmp, left, right, num_words);
-    big equal = vbi_is_zero(tmp, num_words);
+    big neg = !!vbi_sub(tmp, left, right, n);
+    big equal = vbi_is_zero(tmp, n);
     return (!equal - 2 * neg);
 }
 
-/* Computes vli = vli >> 1. */
+/* Computes vbi = vbi >> 1. */
 /* 右移1位 */
 #if !asm_rshift1
-vbi_API void vbi_rshift1(big *vli, count num_words) {
-    big *end = vli;
+vbi_API void vbi_rshift1(big *vbi, count n) {
+    big *end = vbi;
     big carry = 0;
 
-    vli += num_words;
-    while (vli-- > end) {
-        big temp = *vli;
-        *vli = (temp >> 1) | carry;
+    vbi += n;
+    while (vbi-- > end) {
+        big temp = *vbi;
+        *vbi = (temp >> 1) | carry;
         carry = temp << (WORD_BITS - 1);
     }
 }
@@ -167,10 +165,10 @@ vbi_API void vbi_rshift1(big *vli, count num_words) {
 /* Computes result = left + right, returning carry. Can modify in place. */
 /* 加法 */
 #if !asm_add
-vbi_API big vbi_add(big *result, const big *left, const big *right, count num_words) {
+vbi_API big vbi_add(big *result, const big *left, const big *right, count n) {
     big carry = 0; /* 进位 */
     count i;
-    for (i = 0; i < num_words; ++i) {
+    for (i = 0; i < n; ++i) {
         big sum = left[i] + right[i] + carry;
         if (sum != left[i]) {
             carry = (sum < left[i]); // 如果  sum < left[i]成立，返回1,否则返回0
@@ -184,10 +182,10 @@ vbi_API big vbi_add(big *result, const big *left, const big *right, count num_wo
 /* Computes result = left - right, returning borrow. Can modify in place. */
 /* 减法 */
 #if !asm_sub
-vbi_API big vbi_sub(big *result, const big *left, const big *right, count num_words) {
+vbi_API big vbi_sub(big *result, const big *left, const big *right, count n) {
     big borrow = 0; /* 借位 */
     count i;
-    for (i = 0; i < num_words; ++i) {
+    for (i = 0; i < n; ++i) {
         big diff = left[i] - right[i] - borrow;
         if (diff != left[i]) {
             borrow = (diff > left[i]);
@@ -212,14 +210,14 @@ static void muladd(big a, big b, big *r0, big *r1, big *r2) {
 
 /* 乘法 */
 #if !asm_mult
-vbi_API void vbi_mul(big *result, const big *left, const big *right, count num_words) {
+vbi_API void vbi_mul(big *result, const big *left, const big *right, count n) {
     big r0 = 0;
     big r1 = 0;
     big r2 = 0;
     count i, k;
 
     /* Compute each digit of result in sequence, maintaining the carries. */
-    for (k = 0; k < num_words; ++k) {
+    for (k = 0; k < n; ++k) {
         for (i = 0; i <= k; ++i) {
             muladd(left[i], right[k - i], &r0, &r1, &r2);
         }
@@ -228,8 +226,8 @@ vbi_API void vbi_mul(big *result, const big *left, const big *right, count num_w
         r1 = r2;
         r2 = 0;
     }
-    for (k = num_words; k < num_words * 2 - 1; ++k) {
-        for (i = (k + 1) - num_words; i < num_words; ++i) {
+    for (k = n; k < n * 2 - 1; ++k) {
+        for (i = (k + 1) - n; i < n; ++i) {
             muladd(left[i], right[k - i], &r0, &r1, &r2);
         }
         result[k] = r0;
@@ -237,61 +235,61 @@ vbi_API void vbi_mul(big *result, const big *left, const big *right, count num_w
         r1 = r2;
         r2 = 0;
     }
-    result[num_words * 2 - 1] = r0;
+    result[n * 2 - 1] = r0;
 }
 #endif /* !asm_mult */
 
 /* Computes result = (left + right) % mod.
    Assumes that left < mod and right < mod, and that result does not overlap mod. */
 /* 相加求模 */
-vbi_API void vbi_mod_add(big *result, const big *left, const big *right, const big *mod, count num_words) {
-    big carry = vbi_add(result, left, right, num_words);
-    if (carry || vbi_cmp_unsafe(mod, result, num_words) != 1) {
+vbi_API void vbi_mod_add(big *result, const big *left, const big *right, const big *mod, count n) {
+    big carry = vbi_add(result, left, right, n);
+    if (carry || vbi_cmp_unsafe(mod, result, n) != 1) {
         /* result > mod (result = mod + remainder), so subtract mod to get remainder. */
-        vbi_sub(result, result, mod, num_words);
+        vbi_sub(result, result, mod, n);
     }
 }
 
 /* Computes result = (left - right) % mod.
    Assumes that left < mod and right < mod, and that result does not overlap mod. */
 /* 相减求模 */
-vbi_API void vbi_mod_sub(big *result, const big *left, const big *right, const big *mod, count num_words) {
-    big l_borrow = vbi_sub(result, left, right, num_words);
+vbi_API void vbi_mod_sub(big *result, const big *left, const big *right, const big *mod, count n) {
+    big l_borrow = vbi_sub(result, left, right, n);
     if (l_borrow) {
         /* In this case, result == -diff == (max int) - diff. Since -x % d == d - x,
            we can get the correct result from result + mod (with overflow). */
-        vbi_add(result, result, mod, num_words);
+        vbi_add(result, result, mod, n);
     }
 }
 
 /* Computes result = product % mod, where product is 2N words long. */
 /* Currently only designed to work for curve_p or curve_n. */
 /* 求模 */
-vbi_API void vbi_mmod(big *result, big *product, const big *mod, count num_words) {
+vbi_API void vbi_mmod(big *result, big *product, const big *mod, count n) {
     big mod_multiple[2 * MAX_WORDS];
     big tmp[2 * MAX_WORDS];
     big *v[2] = {tmp, product};
     big index;
 
     /* Shift mod so its highest set bit is at the maximum position. */
-    bits shift = (num_words * 2 * WORD_BITS) - vbi_num_bits(mod, num_words);
+    bits shift = (n * 2 * WORD_BITS) - vbi_num_bits(mod, n);
     count word_shift = shift / WORD_BITS;
     count bit_shift = shift % WORD_BITS;
     big carry = 0;
     vbi_clear(mod_multiple, word_shift);
     if (bit_shift > 0) {
-        for(index = 0; index < (big)num_words; ++index) {
+        for(index = 0; index < (big)n; ++index) {
             mod_multiple[word_shift + index] = (mod[index] << bit_shift) | carry;
             carry = mod[index] >> (WORD_BITS - bit_shift);
         }
     } else {
-        vbi_set(mod_multiple + word_shift, mod, num_words);
+        vbi_set(mod_multiple + word_shift, mod, n);
     }
 
     for (index = 1; shift >= 0; --shift) {
         big borrow = 0;
         count i;
-        for (i = 0; i < num_words * 2; ++i) {
+        for (i = 0; i < n * 2; ++i) {
             big diff = v[index][i] - mod_multiple[i] - borrow;
             if (diff != v[index][i]) {
                 borrow = (diff > v[index][i]);
@@ -299,19 +297,19 @@ vbi_API void vbi_mmod(big *result, big *product, const big *mod, count num_words
             v[1 - index][i] = diff;
         }
         index = !(index ^ borrow); /* Swap the index if there was no borrow */
-        vbi_rshift1(mod_multiple, num_words);
-        mod_multiple[num_words - 1] |= mod_multiple[num_words] << (WORD_BITS - 1);
-        vbi_rshift1(mod_multiple + num_words, num_words);
+        vbi_rshift1(mod_multiple, n);
+        mod_multiple[n - 1] |= mod_multiple[n] << (WORD_BITS - 1);
+        vbi_rshift1(mod_multiple + n, n);
     }
-    vbi_set(result, v[index], num_words);
+    vbi_set(result, v[index], n);
 }
 
 /* Computes result = (left * right) % mod. */
 /* 相乘求模 */
-vbi_API void vbi_mod_mul(big *result, const big *left, const big *right, const big *mod, count num_words) {
+vbi_API void vbi_mod_mul(big *result, const big *left, const big *right, const big *mod, count n) {
     big product[2 * MAX_WORDS];
-    vbi_mul(product, left, right, num_words);
-    vbi_mmod(result, product, mod, num_words);
+    vbi_mul(product, left, right, n);
+    vbi_mmod(result, product, mod, n);
 }
 
 /* 曲线相乘求模 */
@@ -331,61 +329,61 @@ vbi_API void vbi_mod_square_fast(big *result, const big *left, Curve curve) {
 
 
 /* 取反求模 更新 */
-#define EVEN(vli) (!(vli[0] & 1))
-static void vbi_mod_inv_update(big *uv, const big *mod, count num_words) {
+#define EVEN(vbi) (!(vbi[0] & 1))
+static void vbi_mod_inv_update(big *uv, const big *mod, count n) {
     big carry = 0;
     if (!EVEN(uv)) {
-        carry = vbi_add(uv, uv, mod, num_words);
+        carry = vbi_add(uv, uv, mod, n);
     }
-    vbi_rshift1(uv, num_words);
+    vbi_rshift1(uv, n);
     if (carry) {
-        uv[num_words - 1] |= HIGH_BIT_SET;
+        uv[n - 1] |= HIGH_BIT_SET;
     }
 }
 
 /* Computes result = (1 / input) % mod. All VLIs are the same size.
    See "From Euclid's GCD to Montgomery Multiplication to the Great Divide" */
 /* 取反求模 */
-vbi_API void vbi_mod_inv(big *result, const big *input, const big *mod, count num_words) {
+vbi_API void vbi_mod_inv(big *result, const big *input, const big *mod, count n) {
     big a[MAX_WORDS], b[MAX_WORDS], u[MAX_WORDS], v[MAX_WORDS];
     cmp cmpResult;
 
-    if (vbi_is_zero(input, num_words)) {
-        vbi_clear(result, num_words);
+    if (vbi_is_zero(input, n)) {
+        vbi_clear(result, n);
         return;
     }
 
-    vbi_set(a, input, num_words);
-    vbi_set(b, mod, num_words);
-    vbi_clear(u, num_words);
+    vbi_set(a, input, n);
+    vbi_set(b, mod, n);
+    vbi_clear(u, n);
     u[0] = 1;
-    vbi_clear(v, num_words);
-    while ((cmpResult = vbi_cmp_unsafe(a, b, num_words)) != 0) {
+    vbi_clear(v, n);
+    while ((cmpResult = vbi_cmp_unsafe(a, b, n)) != 0) {
         if (EVEN(a)) {
-            vbi_rshift1(a, num_words);
-            vbi_mod_inv_update(u, mod, num_words);
+            vbi_rshift1(a, n);
+            vbi_mod_inv_update(u, mod, n);
         } else if (EVEN(b)) {
-            vbi_rshift1(b, num_words);
-            vbi_mod_inv_update(v, mod, num_words);
+            vbi_rshift1(b, n);
+            vbi_mod_inv_update(v, mod, n);
         } else if (cmpResult > 0) {
-            vbi_sub(a, a, b, num_words);
-            vbi_rshift1(a, num_words);
-            if (vbi_cmp_unsafe(u, v, num_words) < 0) {
-                vbi_add(u, u, mod, num_words);
+            vbi_sub(a, a, b, n);
+            vbi_rshift1(a, n);
+            if (vbi_cmp_unsafe(u, v, n) < 0) {
+                vbi_add(u, u, mod, n);
             }
-            vbi_sub(u, u, v, num_words);
-            vbi_mod_inv_update(u, mod, num_words);
+            vbi_sub(u, u, v, n);
+            vbi_mod_inv_update(u, mod, n);
         } else {
-            vbi_sub(b, b, a, num_words);
-            vbi_rshift1(b, num_words);
-            if (vbi_cmp_unsafe(v, u, num_words) < 0) {
-                vbi_add(v, v, mod, num_words);
+            vbi_sub(b, b, a, n);
+            vbi_rshift1(b, n);
+            if (vbi_cmp_unsafe(v, u, n) < 0) {
+                vbi_add(v, v, mod, n);
             }
-            vbi_sub(v, v, u, num_words);
-            vbi_mod_inv_update(v, mod, num_words);
+            vbi_sub(v, v, u, n);
+            vbi_mod_inv_update(v, mod, n);
         }
     }
-    vbi_set(result, u, num_words);
+    vbi_set(result, u, n);
 }
 
 /* ------ Point operations ------ */
@@ -417,16 +415,16 @@ static void apply_z(big * X1,
 /* P = (x1, y1) => 2P, (x2, y2) => P' */
 static void XYcZ_initial_double(big * X1, big * Y1, big * X2, big * Y2, const big * const initial_Z, Curve curve) {
     big z[MAX_WORDS];
-    count num_words = curve->num_words;
+    count n = curve->num_words;
     if (initial_Z) {
-        vbi_set(z, initial_Z, num_words);
+        vbi_set(z, initial_Z, n);
     } else {
-        vbi_clear(z, num_words);
+        vbi_clear(z, n);
         z[0] = 1;
     }
 
-    vbi_set(X2, X1, num_words);
-    vbi_set(Y2, Y1, num_words);
+    vbi_set(X2, X1, n);
+    vbi_set(Y2, Y1, n);
 
     apply_z(X1, Y1, z, curve);
     curve->double_jacobian(X1, Y1, z, curve);
@@ -440,24 +438,24 @@ static void XYcZ_initial_double(big * X1, big * Y1, big * X2, big * Y2, const bi
 static void XYcZ_add(big * X1, big * Y1, big * X2, big * Y2, Curve curve) {
     /* t1 = X1, t2 = Y1, t3 = X2, t4 = Y2 */
     big t5[MAX_WORDS];
-    count num_words = curve->num_words;
+    count n = curve->num_words;
 
-    vbi_mod_sub(t5, X2, X1, curve->p, num_words); /* t5 = x2 - x1 */
+    vbi_mod_sub(t5, X2, X1, curve->p, n); /* t5 = x2 - x1 */
     vbi_mod_square_fast(t5, t5, curve);                  /* t5 = (x2 - x1)^2 = A */
     vbi_mod_mul_fast(X1, X1, t5, curve);                /* t1 = x1*A = B */
     vbi_mod_mul_fast(X2, X2, t5, curve);                /* t3 = x2*A = C */
-    vbi_mod_sub(Y2, Y2, Y1, curve->p, num_words); /* t4 = y2 - y1 */
+    vbi_mod_sub(Y2, Y2, Y1, curve->p, n); /* t4 = y2 - y1 */
     vbi_mod_square_fast(t5, Y2, curve);                  /* t5 = (y2 - y1)^2 = D */
 
-    vbi_mod_sub(t5, t5, X1, curve->p, num_words); /* t5 = D - B */
-    vbi_mod_sub(t5, t5, X2, curve->p, num_words); /* t5 = D - B - C = x3 */
-    vbi_mod_sub(X2, X2, X1, curve->p, num_words); /* t3 = C - B */
+    vbi_mod_sub(t5, t5, X1, curve->p, n); /* t5 = D - B */
+    vbi_mod_sub(t5, t5, X2, curve->p, n); /* t5 = D - B - C = x3 */
+    vbi_mod_sub(X2, X2, X1, curve->p, n); /* t3 = C - B */
     vbi_mod_mul_fast(Y1, Y1, X2, curve);                /* t2 = y1*(C - B) */
-    vbi_mod_sub(X2, X1, t5, curve->p, num_words); /* t3 = B - x3 */
+    vbi_mod_sub(X2, X1, t5, curve->p, n); /* t3 = B - x3 */
     vbi_mod_mul_fast(Y2, Y2, X2, curve);                /* t4 = (y2 - y1)*(B - x3) */
-    vbi_mod_sub(Y2, Y2, Y1, curve->p, num_words); /* t4 = y3 */
+    vbi_mod_sub(Y2, Y2, Y1, curve->p, n); /* t4 = y3 */
 
-    vbi_set(X2, t5, num_words);
+    vbi_set(X2, t5, n);
 }
 
 /* Input P = (x1, y1, Z), Q = (x2, y2, Z)
@@ -469,32 +467,32 @@ static void XYcZ_addC(big * X1, big * Y1, big * X2, big * Y2, Curve curve) {
     big t5[MAX_WORDS];
     big t6[MAX_WORDS];
     big t7[MAX_WORDS];
-    count num_words = curve->num_words;
+    count n = curve->num_words;
 
-    vbi_mod_sub(t5, X2, X1, curve->p, num_words); /* t5 = x2 - x1 */
+    vbi_mod_sub(t5, X2, X1, curve->p, n); /* t5 = x2 - x1 */
     vbi_mod_square_fast(t5, t5, curve);                  /* t5 = (x2 - x1)^2 = A */
     vbi_mod_mul_fast(X1, X1, t5, curve);                /* t1 = x1*A = B */
     vbi_mod_mul_fast(X2, X2, t5, curve);                /* t3 = x2*A = C */
-    vbi_mod_add(t5, Y2, Y1, curve->p, num_words); /* t5 = y2 + y1 */
-    vbi_mod_sub(Y2, Y2, Y1, curve->p, num_words); /* t4 = y2 - y1 */
+    vbi_mod_add(t5, Y2, Y1, curve->p, n); /* t5 = y2 + y1 */
+    vbi_mod_sub(Y2, Y2, Y1, curve->p, n); /* t4 = y2 - y1 */
 
-    vbi_mod_sub(t6, X2, X1, curve->p, num_words); /* t6 = C - B */
+    vbi_mod_sub(t6, X2, X1, curve->p, n); /* t6 = C - B */
     vbi_mod_mul_fast(Y1, Y1, t6, curve);                /* t2 = y1 * (C - B) = E */
-    vbi_mod_add(t6, X1, X2, curve->p, num_words); /* t6 = B + C */
+    vbi_mod_add(t6, X1, X2, curve->p, n); /* t6 = B + C */
     vbi_mod_square_fast(X2, Y2, curve);                  /* t3 = (y2 - y1)^2 = D */
-    vbi_mod_sub(X2, X2, t6, curve->p, num_words); /* t3 = D - (B + C) = x3 */
+    vbi_mod_sub(X2, X2, t6, curve->p, n); /* t3 = D - (B + C) = x3 */
 
-    vbi_mod_sub(t7, X1, X2, curve->p, num_words); /* t7 = B - x3 */
+    vbi_mod_sub(t7, X1, X2, curve->p, n); /* t7 = B - x3 */
     vbi_mod_mul_fast(Y2, Y2, t7, curve);                /* t4 = (y2 - y1)*(B - x3) */
-    vbi_mod_sub(Y2, Y2, Y1, curve->p, num_words); /* t4 = (y2 - y1)*(B - x3) - E = y3 */
+    vbi_mod_sub(Y2, Y2, Y1, curve->p, n); /* t4 = (y2 - y1)*(B - x3) - E = y3 */
 
     vbi_mod_square_fast(t7, t5, curve);                  /* t7 = (y2 + y1)^2 = F */
-    vbi_mod_sub(t7, t7, t6, curve->p, num_words); /* t7 = F - (B + C) = x3' */
-    vbi_mod_sub(t6, t7, X1, curve->p, num_words); /* t6 = x3' - B */
+    vbi_mod_sub(t7, t7, t6, curve->p, n); /* t7 = F - (B + C) = x3' */
+    vbi_mod_sub(t6, t7, X1, curve->p, n); /* t6 = x3' - B */
     vbi_mod_mul_fast(t6, t6, t5, curve);                /* t6 = (y2+y1)*(x3' - B) */
-    vbi_mod_sub(Y1, t6, Y1, curve->p, num_words); /* t2 = (y2+y1)*(x3' - B) - E = y3' */
+    vbi_mod_sub(Y1, t6, Y1, curve->p, n); /* t2 = (y2+y1)*(x3' - B) - E = y3' */
 
-    vbi_set(X1, t7, num_words);
+    vbi_set(X1, t7, n);
 }
 
 /* result may overlap point. */
@@ -505,10 +503,10 @@ static void EccPoint_mult(big * result, const big * point, const big * scalar, c
     big z[MAX_WORDS];
     bits i;
     big nb;
-    count num_words = curve->num_words;
+    count n = curve->num_words;
 
-    vbi_set(Rx[1], point, num_words);
-    vbi_set(Ry[1], point + num_words, num_words);
+    vbi_set(Rx[1], point, n);
+    vbi_set(Ry[1], point + n, n);
 
     XYcZ_initial_double(Rx[1], Ry[1], Rx[0], Ry[0], initial_Z, curve);
 
@@ -522,20 +520,20 @@ static void EccPoint_mult(big * result, const big * point, const big * scalar, c
     XYcZ_addC(Rx[1 - nb], Ry[1 - nb], Rx[nb], Ry[nb], curve);
 
     /* Find final 1/Z value. */
-    vbi_mod_sub(z, Rx[1], Rx[0], curve->p, num_words); /* X1 - X0 */
+    vbi_mod_sub(z, Rx[1], Rx[0], curve->p, n); /* X1 - X0 */
     vbi_mod_mul_fast(z, z, Ry[1 - nb], curve);               /* Yb * (X1 - X0) */
     vbi_mod_mul_fast(z, z, point, curve);                    /* xP * Yb * (X1 - X0) */
-    vbi_mod_inv(z, z, curve->p, num_words);            /* 1 / (xP * Yb * (X1 - X0)) */
+    vbi_mod_inv(z, z, curve->p, n);            /* 1 / (xP * Yb * (X1 - X0)) */
     /* yP / (xP * Yb * (X1 - X0)) */
-    vbi_mod_mul_fast(z, z, point + num_words, curve);
+    vbi_mod_mul_fast(z, z, point + n, curve);
     vbi_mod_mul_fast(z, z, Rx[1 - nb], curve); /* Xb * yP / (xP * Yb * (X1 - X0)) */
     /* End 1/Z calculation */
 
     XYcZ_add(Rx[nb], Ry[nb], Rx[1 - nb], Ry[1 - nb], curve);
     apply_z(Rx[0], Ry[0], z, curve);
 
-    vbi_set(result, Rx[0], num_words);
-    vbi_set(result + num_words, Ry[0], num_words);
+    vbi_set(result, Rx[0], n);
+    vbi_set(result + n, Ry[0], n);
 }
 
 static big regularize_k(const big * const k, big *k0, big *k1, Curve curve) {
@@ -549,23 +547,23 @@ static big regularize_k(const big * const k, big *k0, big *k1, Curve curve) {
 }
 
 /* Generates a random integer in the range 0 < random < top.
-   Both random and top have num_words words. */
-vbi_API int uECC_generate_random_int(big *random, const big *top, count num_words) {
+   Both random and top have n words. */
+vbi_API int generate_random_int(big *random, const big *top, count n) {
     big mask = (big)-1;
     big tries;
-    bits num_bits = vbi_num_bits(top, num_words);
+    bits num_bits = vbi_num_bits(top, n);
 
     if (!g_rng_function) {
         return 0;
     }
 
     for (tries = 0; tries < RNG_MAX_TRIES; ++tries) {
-        if (!g_rng_function((uint8_t *)random, num_words * WORD_SIZE)) {
+        if (!g_rng_function((uint8_t *)random, n * WORD_SIZE)) {
             return 0;
         }
-        random[num_words - 1] &= mask >> ((bits)(num_words * WORD_SIZE * 8 - num_bits));
-        if (!vbi_is_zero(random, num_words) &&
-                vbi_cmp(top, random, num_words) == 1) {
+        random[n - 1] &= mask >> ((bits)(n * WORD_SIZE * 8 - num_bits));
+        if (!vbi_is_zero(random, n) &&
+                vbi_cmp(top, random, n) == 1) {
             return 1;
         }
     }
@@ -586,7 +584,7 @@ static big EccPoint_compute_public_key(big *result, big *private_key, Curve curv
     /* If an RNG function was specified, try to get a random initial Z value to improve
        protection against side-channel attacks. */
     if (g_rng_function) {
-        if (!uECC_generate_random_int(p2[carry], curve->p, curve->num_words)) {
+        if (!generate_random_int(p2[carry], curve->p, curve->num_words)) {
             return 0;
         }
         initial_Z = p2[carry];
@@ -629,7 +627,7 @@ int curve_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
     big tries;
 
     for (tries = 0; tries < RNG_MAX_TRIES; ++tries) {
-        if (!uECC_generate_random_int(_private, curve->n, BITS_TO_WORDS(curve->num_n_bits))) {
+        if (!generate_random_int(_private, curve->n, BITS_TO_WORDS(curve->num_n_bits))) {
             return 0;
         }
 
@@ -655,13 +653,13 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
     big *p2[2] = {_private, tmp};
     big *initial_Z = 0;
     big carry;
-    count num_words = curve->num_words;
+    count n = curve->num_words;
     count num_bytes = curve->num_bytes;
 
 
     vbi_bytes_native(_private, private_key, BITS_TO_BYTES(curve->num_n_bits));
     vbi_bytes_native(_public, public_key, num_bytes);
-    vbi_bytes_native(_public + num_words, public_key + num_bytes, num_bytes);
+    vbi_bytes_native(_public + n, public_key + num_bytes, num_bytes);
 
 
     /* Regularize the bitcount for the private key so that attackers cannot use a side channel
@@ -671,7 +669,7 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
     /* If an RNG function was specified, try to get a random initial Z value to improve
        protection against side-channel attacks. */
     if (g_rng_function) {
-        if (!uECC_generate_random_int(p2[carry], curve->p, num_words)) {
+        if (!generate_random_int(p2[carry], curve->p, n)) {
             return 0;
         }
         initial_Z = p2[carry];
@@ -688,7 +686,7 @@ int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, u
 vbi_API int uECC_valid_point(const big *point, Curve curve) {
     big tmp1[MAX_WORDS];
     big tmp2[MAX_WORDS];
-    count num_words = curve->num_words;
+    count n = curve->num_words;
 
     /* The point at infinity is invalid. */
     if (EccPoint_isZero(point, curve)) {
@@ -696,16 +694,16 @@ vbi_API int uECC_valid_point(const big *point, Curve curve) {
     }
 
     /* x and y must be smaller than p. */
-    if (vbi_cmp_unsafe(curve->p, point, num_words) != 1 ||
-            vbi_cmp_unsafe(curve->p, point + num_words, num_words) != 1) {
+    if (vbi_cmp_unsafe(curve->p, point, n) != 1 ||
+            vbi_cmp_unsafe(curve->p, point + n, n) != 1) {
         return 0;
     }
 
-    vbi_mod_square_fast(tmp1, point + num_words, curve);
+    vbi_mod_square_fast(tmp1, point + n, curve);
     curve->x_side(tmp2, point, curve); /* tmp2 = x^3 + ax + b */
 
     /* Make sure that y^2 == x^3 + ax + b */
-    return (int)(vbi_equal(tmp1, tmp2, num_words));
+    return (int)(vbi_equal(tmp1, tmp2, n));
 }
 
 /* 有效的公钥 */
@@ -803,12 +801,12 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
     big p[MAX_WORDS * 2];
 
     big carry;
-    count num_words = curve->num_words;
+    count n = curve->num_words;
     count num_n_words = BITS_TO_WORDS(curve->num_n_bits);
     bits num_n_bits = curve->num_n_bits;
 
     /* Make sure 0 < k < curve_n */
-    if (vbi_is_zero(k, num_words) || vbi_cmp(curve->n, k, num_n_words) != 1) {
+    if (vbi_is_zero(k, n) || vbi_cmp(curve->n, k, num_n_words) != 1) {
         return 0;
     }
 
@@ -816,13 +814,13 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
     /* If an RNG function was specified, try to get a random initial Z value to improve
        protection against side-channel attacks. */
     if (g_rng_function) {
-        if (!uECC_generate_random_int(k2[carry], curve->p, num_words)) {
+        if (!generate_random_int(k2[carry], curve->p, n)) {
             return 0;
         }
         initial_Z = k2[carry];
     }
     EccPoint_mult(p, curve->G, k2[!carry], initial_Z, num_n_bits + 1, curve);
-    if (vbi_is_zero(p, num_words)) {
+    if (vbi_is_zero(p, n)) {
         return 0;
     }
 
@@ -831,7 +829,7 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
     if (!g_rng_function) {
         vbi_clear(tmp, num_n_words);
         tmp[0] = 1;
-    } else if (!uECC_generate_random_int(tmp, curve->n, num_n_words)) {
+    } else if (!generate_random_int(tmp, curve->n, num_n_words)) {
         return 0;
     }
 
@@ -848,7 +846,7 @@ static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t 
 
 
     s[num_n_words - 1] = 0;
-    vbi_set(s, p, num_words);
+    vbi_set(s, p, n);
     vbi_mod_mul(s, tmp, s, curve->n, num_n_words); /* s = r*d */
 
     bits2int(tmp, message_hash, hash_size, curve);
@@ -881,130 +879,13 @@ int curve_sign(const uint8_t *private_key,
     big tries;
 
     for (tries = 0; tries < RNG_MAX_TRIES; ++tries) {
-        if (!uECC_generate_random_int(k, curve->n, BITS_TO_WORDS(curve->num_n_bits))) {
+        if (!generate_random_int(k, curve->n, BITS_TO_WORDS(curve->num_n_bits))) {
             return 0;
         }
 
         if (curve_sign_with_k_internal(private_key, message_hash, hash_size, k, signature, curve)) {
             return 1;
         }
-    }
-    return 0;
-}
-
-/* Compute an HMAC using K as a key (as in RFC 6979). Note that K is always
-   the same size as the hash result size. */
-/* HMAC散列算法 */
-static void HMAC_init(const uECC_HashContext *hash_context, const uint8_t *K) {
-    uint8_t *pad = hash_context->tmp + 2 * hash_context->result_size;
-    unsigned i;
-    for (i = 0; i < hash_context->result_size; ++i)
-        pad[i] = K[i] ^ 0x36;
-    for (; i < hash_context->block_size; ++i)
-        pad[i] = 0x36;
-
-    hash_context->init_hash(hash_context);
-    hash_context->update_hash(hash_context, pad, hash_context->block_size);
-}
-
-static void HMAC_update(const uECC_HashContext *hash_context, const uint8_t *message, unsigned message_size) {
-    hash_context->update_hash(hash_context, message, message_size);
-}
-
-static void HMAC_finish(const uECC_HashContext *hash_context, const uint8_t *K, uint8_t *result) {
-    uint8_t *pad = hash_context->tmp + 2 * hash_context->result_size;
-    unsigned i;
-    for (i = 0; i < hash_context->result_size; ++i)
-        pad[i] = K[i] ^ 0x5c;
-    for (; i < hash_context->block_size; ++i)
-        pad[i] = 0x5c;
-
-    hash_context->finish_hash(hash_context, result);
-
-    hash_context->init_hash(hash_context);
-    hash_context->update_hash(hash_context, pad, hash_context->block_size);
-    hash_context->update_hash(hash_context, result, hash_context->result_size);
-    hash_context->finish_hash(hash_context, result);
-}
-
-/* V = HMAC_K(V) */
-static void update_V(const uECC_HashContext *hash_context, uint8_t *K, uint8_t *V) {
-    HMAC_init(hash_context, K);
-    HMAC_update(hash_context, V, hash_context->result_size);
-    HMAC_finish(hash_context, K, V);
-}
-
-/* Deterministic signing, similar to RFC 6979. Differences are:
-    * We just use H(m) directly rather than bits2octets(H(m))
-      (it is not reduced modulo curve_n).
-    * We generate a value for k (aka T) directly rather than converting endianness.
-
-   Layout of hash_context->tmp: <K> | <V> | (1 byte overlapped 0x00 or 0x01) / <HMAC pad> */
-/* 确定性签名 */
-int curve_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, Curve curve) {
-    uint8_t *K = hash_context->tmp;
-    uint8_t *V = K + hash_context->result_size;
-    count num_bytes = curve->num_bytes;
-    count num_n_words = BITS_TO_WORDS(curve->num_n_bits);
-    bits num_n_bits = curve->num_n_bits;
-    big tries;
-    unsigned i;
-    for (i = 0; i < hash_context->result_size; ++i) {
-        V[i] = 0x01;
-        K[i] = 0;
-    }
-
-    /* K = HMAC_K(V || 0x00 || int2octets(x) || h(m)) */
-    HMAC_init(hash_context, K);
-    V[hash_context->result_size] = 0x00;
-    HMAC_update(hash_context, V, hash_context->result_size + 1);
-    HMAC_update(hash_context, private_key, num_bytes);
-    HMAC_update(hash_context, message_hash, hash_size);
-    HMAC_finish(hash_context, K, K);
-
-    update_V(hash_context, K, V);
-
-    /* K = HMAC_K(V || 0x01 || int2octets(x) || h(m)) */
-    HMAC_init(hash_context, K);
-    V[hash_context->result_size] = 0x01;
-    HMAC_update(hash_context, V, hash_context->result_size + 1);
-    HMAC_update(hash_context, private_key, num_bytes);
-    HMAC_update(hash_context, message_hash, hash_size);
-    HMAC_finish(hash_context, K, K);
-
-    update_V(hash_context, K, V);
-
-    for (tries = 0; tries < RNG_MAX_TRIES; ++tries) {
-        big T[MAX_WORDS];
-        uint8_t *T_ptr = (uint8_t *)T;
-        count T_bytes = 0;
-        for (;;) {
-            update_V(hash_context, K, V);
-            for (i = 0; i < hash_context->result_size; ++i) {
-                T_ptr[T_bytes++] = V[i];
-                if (T_bytes >= num_n_words * WORD_SIZE) {
-                    goto filled;
-                }
-            }
-        }
-    filled:
-        if ((bits)num_n_words * WORD_SIZE * 8 > num_n_bits) {
-            big mask = (big)-1;
-            T[num_n_words - 1] &=
-                mask >> ((bits)(num_n_words * WORD_SIZE * 8 - num_n_bits));
-        }
-
-        if (curve_sign_with_k_internal(private_key, message_hash, hash_size, T, signature, curve)) {
-            return 1;
-        }
-
-        /* K = HMAC_K(V || 0x00) */
-        HMAC_init(hash_context, K);
-        V[hash_context->result_size] = 0x00;
-        HMAC_update(hash_context, V, hash_context->result_size + 1);
-        HMAC_finish(hash_context, K, K);
-
-        update_V(hash_context, K, V);
     }
     return 0;
 }
@@ -1031,7 +912,7 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
     big _public[MAX_WORDS * 2];
 
     big r[MAX_WORDS], s[MAX_WORDS];
-    count num_words = curve->num_words;
+    count n = curve->num_words;
     count num_n_words = BITS_TO_WORDS(curve->num_n_bits);
 
     rx[num_n_words - 1] = 0;
@@ -1040,14 +921,13 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
 
 
     vbi_bytes_native(_public, public_key, curve->num_bytes);
-    vbi_bytes_native(
-        _public + num_words, public_key + curve->num_bytes, curve->num_bytes);
+    vbi_bytes_native(_public + n, public_key + curve->num_bytes, curve->num_bytes);
     vbi_bytes_native(r, signature, curve->num_bytes);
     vbi_bytes_native(s, signature + curve->num_bytes, curve->num_bytes);
 
 
     /* r, s must not be 0. */
-    if (vbi_is_zero(r, num_words) || vbi_is_zero(s, num_words)) {
+    if (vbi_is_zero(r, n) || vbi_is_zero(s, n)) {
         return 0;
     }
 
@@ -1065,14 +945,14 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
     vbi_mod_mul(u2, r, z, curve->n, num_n_words); /* u2 = r/s */
 
     /* Calculate sum = G + Q. */
-    vbi_set(sum, _public, num_words);
-    vbi_set(sum + num_words, _public + num_words, num_words);
-    vbi_set(tx, curve->G, num_words);
-    vbi_set(ty, curve->G + num_words, num_words);
-    vbi_mod_sub(z, sum, tx, curve->p, num_words); /* z = x2 - x1 */
-    XYcZ_add(tx, ty, sum, sum + num_words, curve);
-    vbi_mod_inv(z, z, curve->p, num_words); /* z = 1/z */
-    apply_z(sum, sum + num_words, z, curve);
+    vbi_set(sum, _public, n);
+    vbi_set(sum + n, _public + n, n);
+    vbi_set(tx, curve->G, n);
+    vbi_set(ty, curve->G + n, n);
+    vbi_mod_sub(z, sum, tx, curve->p, n); /* z = x2 - x1 */
+    XYcZ_add(tx, ty, sum, sum + n, curve);
+    vbi_mod_inv(z, z, curve->p, n); /* z = 1/z */
+    apply_z(sum, sum + n, z, curve);
 
     /* Use Shamir's trick to calculate u1*G + u2*Q */
     points[0] = 0;
@@ -1084,9 +964,9 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
 
     point = points[(!!vbi_test_bit(u1, num_bits - 1)) |
                    ((!!vbi_test_bit(u2, num_bits - 1)) << 1)];
-    vbi_set(rx, point, num_words);
-    vbi_set(ry, point + num_words, num_words);
-    vbi_clear(z, num_words);
+    vbi_set(rx, point, n);
+    vbi_set(ry, point + n, n);
+    vbi_clear(z, n);
     z[0] = 1;
 
     for (i = num_bits - 2; i >= 0; --i) {
@@ -1096,16 +976,16 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
         index = (!!vbi_test_bit(u1, i)) | ((!!vbi_test_bit(u2, i)) << 1);
         point = points[index];
         if (point) {
-            vbi_set(tx, point, num_words);
-            vbi_set(ty, point + num_words, num_words);
+            vbi_set(tx, point, n);
+            vbi_set(ty, point + n, n);
             apply_z(tx, ty, z, curve);
-            vbi_mod_sub(tz, rx, tx, curve->p, num_words); /* Z = x2 - x1 */
+            vbi_mod_sub(tz, rx, tx, curve->p, n); /* Z = x2 - x1 */
             XYcZ_add(tx, ty, rx, ry, curve);
             vbi_mod_mul_fast(z, z, tz, curve);
         }
     }
 
-    vbi_mod_inv(z, z, curve->p, num_words); /* Z = 1/Z */
+    vbi_mod_inv(z, z, curve->p, n); /* Z = 1/Z */
     apply_z(rx, ry, z, curve);
 
     /* v = x1 (mod n) */
@@ -1114,6 +994,6 @@ int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigne
     }
 
     /* Accept only if v == r. */
-    return (int)(vbi_equal(rx, r, num_words));
+    return (int)(vbi_equal(rx, r, n));
 }
 
