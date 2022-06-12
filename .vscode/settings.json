@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "fcntl.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "curve.h": "c",
+        "bigint.h": "c"
     }
 }

@@ -1,6 +1,6 @@
 /* Copyright 2020, Kenneth MacKay. Licensed under the BSD 2-clause license. */
 
-#include "uECC.h"
+#include "curve.h"
 
 #include <stdio.h>
 #include <stdlib.h>
