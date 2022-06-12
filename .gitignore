@@ -6,3 +6,9 @@ __pycache__
 *.pyz
 *.egg-info/
 .DS_Store
+
+echdh
+ecdsa
+compute
+ecdsa_test_vectors
+ecdsa_test_vectors

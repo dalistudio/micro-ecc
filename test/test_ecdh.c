@@ -71,6 +71,25 @@ int main() {
             }
         }
         printf("\n");
+        printf("Shared secrets info:\n");
+        printf("Private key 1 = ");
+        vli_print(private1, 32);
+        printf("\n");
+        printf("Private key 2 = ");
+        vli_print(private2, 32);
+        printf("\n");
+        printf("Public key 1 = ");
+        vli_print(public1, 64);
+        printf("\n");
+        printf("Public key 2 = ");
+        vli_print(public2, 64);
+        printf("\n");
+        printf("Shared secret 1 = ");
+        vli_print(secret1, 32);
+        printf("\n");
+        printf("Shared secret 2 = ");
+        vli_print(secret2, 32);
+        printf("\n");
     }
     
     return 0;
