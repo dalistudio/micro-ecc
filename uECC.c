@@ -36,11 +36,11 @@ RNG_Function uECC_get_rng(void) {
     return g_rng_function;
 }
 
-int uECC_curve_private_key_size(Curve curve) {
+int curve_private_key_size(Curve curve) {
     return BITS_TO_BYTES(curve->num_n_bits);
 }
 
-int uECC_curve_public_key_size(Curve curve) {
+int curve_public_key_size(Curve curve) {
     return 2 * curve->num_bytes;
 }
 
@@ -621,7 +621,7 @@ vbi_API void vbi_bytes_native(big *native, const uint8_t *bytes, int num_bytes) 
 
 
 /* 生成公钥和私钥 */
-int uECC_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
+int curve_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
 
     big _private[MAX_WORDS];
     big _public[MAX_WORDS * 2];
@@ -647,7 +647,7 @@ int uECC_make_key(uint8_t *public_key, uint8_t *private_key, Curve curve) {
 }
 
 /* 共享密钥 */
-int uECC_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, Curve curve) {
+int curve_shared_secret(const uint8_t *public_key, const uint8_t *private_key, uint8_t *secret, Curve curve) {
     big _public[MAX_WORDS * 2];
     big _private[MAX_WORDS];
 
@@ -709,7 +709,7 @@ vbi_API int uECC_valid_point(const big *point, Curve curve) {
 }
 
 /* 有效的公钥 */
-int uECC_valid_public_key(const uint8_t *public_key, Curve curve) {
+int curve_valid_public_key(const uint8_t *public_key, Curve curve) {
 
     big _public[MAX_WORDS * 2];
 
@@ -723,7 +723,7 @@ int uECC_valid_public_key(const uint8_t *public_key, Curve curve) {
 }
 
 /* 计算公钥 */
-int uECC_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Curve curve) {
+int curve_compute_public_key(const uint8_t *private_key, uint8_t *public_key, Curve curve) {
 
     big _private[MAX_WORDS];
     big _public[MAX_WORDS * 2];
@@ -793,7 +793,7 @@ static void bits2int(big *native, const uint8_t *bits, unsigned bits_size, Curve
 }
 
 /* 用内部k签名 */
-static int uECC_sign_with_k_internal(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, big *k, uint8_t *signature, Curve curve) {
+static int curve_sign_with_k_internal(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, big *k, uint8_t *signature, Curve curve) {
 
     big tmp[MAX_WORDS];
     big s[MAX_WORDS];
@@ -865,14 +865,14 @@ static int uECC_sign_with_k_internal(const uint8_t *private_key, const uint8_t *
 
 /* For testing - sign with an explicitly specified k value */
 /* 用k签名 */
-int uECC_sign_with_k(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *k, uint8_t *signature, Curve curve) {
+int curve_sign_with_k(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *k, uint8_t *signature, Curve curve) {
     big k2[MAX_WORDS];
     bits2int(k2, k, BITS_TO_BYTES(curve->num_n_bits), curve);
-    return uECC_sign_with_k_internal(private_key, message_hash, hash_size, k2, signature, curve);
+    return curve_sign_with_k_internal(private_key, message_hash, hash_size, k2, signature, curve);
 }
 
 /* 签名 */
-int uECC_sign(const uint8_t *private_key,
+int curve_sign(const uint8_t *private_key,
               const uint8_t *message_hash,
               unsigned hash_size,
               uint8_t *signature,
@@ -885,7 +885,7 @@ int uECC_sign(const uint8_t *private_key,
             return 0;
         }
 
-        if (uECC_sign_with_k_internal(private_key, message_hash, hash_size, k, signature, curve)) {
+        if (curve_sign_with_k_internal(private_key, message_hash, hash_size, k, signature, curve)) {
             return 1;
         }
     }
@@ -941,7 +941,7 @@ static void update_V(const uECC_HashContext *hash_context, uint8_t *K, uint8_t *
 
    Layout of hash_context->tmp: <K> | <V> | (1 byte overlapped 0x00 or 0x01) / <HMAC pad> */
 /* 确定性签名 */
-int uECC_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, Curve curve) {
+int curve_sign_deterministic(const uint8_t *private_key, const uint8_t *message_hash, unsigned hash_size, const uECC_HashContext *hash_context, uint8_t *signature, Curve curve) {
     uint8_t *K = hash_context->tmp;
     uint8_t *V = K + hash_context->result_size;
     count num_bytes = curve->num_bytes;
@@ -994,7 +994,7 @@ int uECC_sign_deterministic(const uint8_t *private_key, const uint8_t *message_h
                 mask >> ((bits)(num_n_words * WORD_SIZE * 8 - num_n_bits));
         }
 
-        if (uECC_sign_with_k_internal(private_key, message_hash, hash_size, T, signature, curve)) {
+        if (curve_sign_with_k_internal(private_key, message_hash, hash_size, T, signature, curve)) {
             return 1;
         }
 
@@ -1014,7 +1014,7 @@ static bits smax(bits a, bits b) {
 }
 
 /* 验证 */
-int uECC_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, Curve curve) {
+int curve_verify(const uint8_t *public_key, const uint8_t *message_hash, unsigned hash_size, const uint8_t *signature, Curve curve) {
     big u1[MAX_WORDS], u2[MAX_WORDS];
     big z[MAX_WORDS];
     big sum[MAX_WORDS * 2];

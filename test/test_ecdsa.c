@@ -14,10 +14,8 @@ int main() {
 
     const struct Curve_t * curves[5];
     int num_curves = 0;
-    
-#if uECC_SUPPORTS_secp256k1
-    curves[num_curves++] = uECC_secp256k1();
-#endif
+    curves[num_curves++] = secp256k1();
+
     
     printf("Testing 256 signatures\n");
     for (c = 0; c < num_curves; ++c) {
@@ -25,19 +23,19 @@ int main() {
             printf(".");
             fflush(stdout);
 
-            if (!uECC_make_key(public, private, curves[c])) {
-                printf("uECC_make_key() failed\n");
+            if (!curve_make_key(public, private, curves[c])) {
+                printf("curve_make_key() failed\n");
                 return 1;
             }
             memcpy(hash, public, sizeof(hash));
             
-            if (!uECC_sign(private, hash, sizeof(hash), sig, curves[c])) {
-                printf("uECC_sign() failed\n");
+            if (!curve_sign(private, hash, sizeof(hash), sig, curves[c])) {
+                printf("curve_sign() failed\n");
                 return 1;
             }
 
-            if (!uECC_verify(public, hash, sizeof(hash), sig, curves[c])) {
-                printf("uECC_verify() failed\n");
+            if (!curve_verify(public, hash, sizeof(hash), sig, curves[c])) {
+                printf("curve_verify() failed\n");
                 return 1;
             }
         }

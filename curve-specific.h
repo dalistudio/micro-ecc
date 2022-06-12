@@ -47,7 +47,7 @@ static const struct Curve_t curve_secp256k1 = {
 
 };
 
-Curve uECC_secp256k1(void) { return &curve_secp256k1; }
+Curve secp256k1(void) { return &curve_secp256k1; }
 
 
 /* Double in place */
